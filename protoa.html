@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Macrostrat section renderer</title>
+<style>
+
+.node {
+  fill: #ddd;
+  stroke: #000;
+}
+
+.label {
+  font: 10px sans-serif;
+  text-anchor: middle;
+}
+
+#column, #column2 {
+  display: inline;
+}
+
+</style>
+<body>
+  <div id="column"></div>
+  <div id="column2"></div>
+<!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
+<script src="d3.v3.min.js"></script>
+<script>
+
+
+function getSection(id) {
+  d3.json("http://localhost:5000/api/units?response=long&section_id=" + id, function(error, data) {
+    var units = data.success.data;
+
+    findTimeBounds(units)
+
+  });
+}
+
+
+function findTimeBounds(units) {
+  var min = 9999,
+      max = 0;
+
+  units.forEach(function(d) {
+    if (d.LO_age < min) {
+      min = d.LO_age;
+    }
+    if (d.FO_age > max) {
+      max = d.FO_age;
+    }
+  });
+
+  getTimeIntervals(min, max, units);
+}
+
+
+function getTimeIntervals(min, max, units) {
+  // Find period(s) that wrap this package/column
+  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
+  // TODO: This needs to check if there is more than one period
+    var period = data.success.data.filter(function(d) {
+      if (d.type === "period") {
+        return d;
+      }
+    });
+
+    var early = period[0].early_age,
+        late = period[0].late_age;
+
+    var scale = d3.scale.linear()
+      .domain([late, early])
+      .range([0, 800]);
+
+    // Find all intervals in this period
+    d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
+      draw(data.success.data);
+    });
+  });
+}
+
+function draw(data) {
+  console.log(data);
+  var width = 100,
+      height = 800;
+
+  d3.select("#column").select("svg").remove();
+
+  var svg = d3.select("#column").append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g");
+
+  var scale = d3.scale.linear()
+      .domain([d3.min(data, function(d) { return d.late_age }), d3.max(data, function(d) { return d.early_age})])
+      .range([10, height])
+
+  var interval_lookup = {
+    "period": 0,
+    "epoch": width * 0.3,
+    "age": width * 0.6
+  }
+
+  svg.selectAll(".node")
+    .data(data)
+  .enter().append("rect")
+    .attr("class", "node")
+    .attr("id", function(d) { return "n" + d.name })
+    .attr("x", function(d) { return interval_lookup[d.type] })
+    .attr("y", function(d) { return scale(d.late_age) })
+    .attr("width", width * 0.3)
+    .attr("height", function(d) { return scale(d.early_age) - scale(d.late_age)})
+    .style("fill", function(d) { return d.color });
+
+
+  svg.selectAll(".label")
+    .data(data)
+  .enter().append("text")
+    .attr("class", "label")
+    .attr("dy", ".35em")
+    .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
+    .text(function(d) { return d.name; });
+
+}
+
+var section = window.location.hash.replace("#/", "");
+if (section.length > 0) {
+  getSection(section);
+} else {
+  getSection(4258);
+}
+
+
+</script>
+
