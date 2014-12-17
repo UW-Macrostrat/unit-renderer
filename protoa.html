@@ -6,6 +6,7 @@
 .node {
   fill: #ddd;
   stroke: #000;
+  stroke-width: 0.01em;
 }
 
 .label {
@@ -146,7 +147,17 @@ function draw(data) {
     .attr("y", function(d) { return scale(d.late_age) })
     .attr("width", width * 0.3)
     .attr("height", function(d) { return scale(d.early_age) - scale(d.late_age)})
-    .style("fill", function(d) { return d.color });
+    .style("fill", function(d) { return d.color })
+    .on("click", function(d) {
+      var translateY = d3.select(this).attr("y"),
+          scaleY = 800/d3.select(this).attr("height");
+          
+      d3.selectAll("#timescale, #section")
+        .transition()
+        .duration(1000)
+        .attr("transform", "scale(1," + scaleY + ")translate(0,-" + translateY + ")");
+    });
+
 
 
   svg.selectAll(".label")
