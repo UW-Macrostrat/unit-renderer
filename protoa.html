@@ -22,13 +22,14 @@
 <body>
   <div id="column"></div>
   <div id="column2"></div>
-<!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
-<script src="d3.v3.min.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<!--<script src="d3.v3.min.js"></script>-->
 <script>
 
+var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org"
 
 function getSection(id) {
-  d3.json("http://localhost:5000/api/units?response=long&section_id=" + id, function(error, data) {
+  d3.json(baseURL + "/api/units?response=long&section_id=" + id, function(error, data) {
     var units = data.success.data;
 
     var late_age = d3.min(units, function(d) { return d.LO_age }),
@@ -42,7 +43,7 @@ function getSection(id) {
 
 function getTimeIntervals(early, late, units) {
   // 1. Find all intervals that overlap this range
-  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
+  d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
     // 2. Check if any periods were returned
     var periods = data.success.data.filter(function(d) {
       if (d.type === "period") {
@@ -52,7 +53,7 @@ function getTimeIntervals(early, late, units) {
 
     // 2B. Otherwise, find the period that contains the midpoint of this range
     if (periods.length < 1) {
-      d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
+      d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
         getAllIntervals(units, data.success.data);
       });
 
@@ -61,7 +62,7 @@ function getTimeIntervals(early, late, units) {
       if (d3.min(periods, function(d) { return d.late_age }) > late) {
         // Not late enough
         console.log("not late enough");
-        d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
+        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
           var period = data.success.data.filter(function(d) {
             if (d.type === "period") {
               return d;
@@ -73,7 +74,7 @@ function getTimeIntervals(early, late, units) {
       } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
         // Not early enough
         console.log("not early enough");
-        d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
+        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
           var period = data.success.data.filter(function(d) {
             if (d.type === "period") {
               return d;
@@ -103,7 +104,7 @@ function getAllIntervals(units, periods) {
 
   // 4. Basically redo #1, but with this new range
   // Find all intervals in this period
-  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
+  d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
     data.success.data.forEach(function(d) {
      // d.boundaries = 0;
       d.children = [];
