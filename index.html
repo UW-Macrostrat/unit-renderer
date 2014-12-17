@@ -30,59 +30,88 @@ function getSection(id) {
   d3.json("http://localhost:5000/api/units?response=long&section_id=" + id, function(error, data) {
     var units = data.success.data;
 
-    findTimeBounds(units)
+    var late_age = d3.min(units, function(d) { return d.LO_age }),
+        early_age = d3.max(units, function(d) { return d.FO_age });
+    
+    getTimeIntervals(early_age, late_age, units);
 
   });
 }
 
 
-function findTimeBounds(units) {
-  var min = 9999,
-      max = 0;
-
-  units.forEach(function(d) {
-    if (d.LO_age < min) {
-      min = d.LO_age;
-    }
-    if (d.FO_age > max) {
-      max = d.FO_age;
-    }
-  });
-
-  getTimeIntervals(min, max, units);
-}
-
-
-function getTimeIntervals(min, max, units) {
-  // Find period(s) that wrap this package/column
-  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
-  // TODO: This needs to check if there is more than one period
-    var period = data.success.data.filter(function(d) {
+function getTimeIntervals(early, late, units) {
+  // 1. Find all intervals that overlap this range
+  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
+    // 2. Check if any periods were returned
+    var periods = data.success.data.filter(function(d) {
       if (d.type === "period") {
         return d;
       }
     });
 
-   var scale = d3.scale.linear()
-      .domain([period[0].late_age, period[0].early_age])
-      .range([0, 800]);
-
-    drawUnits(scale, units);
-
-    var early = period[0].early_age,
-        late = period[0].late_age;
-
-    // Find all intervals in this period
-    d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
-      data.success.data.forEach(function(d) {
-       // d.boundaries = 0;
-        d.children = [];
-        d.boundaries = [];
-        d.t_boundaries = 0;
+    // 2B. Otherwise, find the period that contains the midpoint of this range
+    if (periods.length < 1) {
+      d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
+        getAllIntervals(units, data.success.data);
       });
-      countBoundaries(data.success.data, units);
-    });
+
+    // 2A. If so, continue on
+    } else {
+      if (d3.min(periods, function(d) { return d.late_age }) > late) {
+        // Not late enough
+        console.log("not late enough");
+        d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
+          var period = data.success.data.filter(function(d) {
+            if (d.type === "period") {
+              return d;
+            }
+          });
+          periods.push(period[0]);
+          getAllIntervals(units, periods);
+        });
+      } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
+        // Not early enough
+        console.log("not early enough");
+        d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
+          var period = data.success.data.filter(function(d) {
+            if (d.type === "period") {
+              return d;
+            }
+          });
+          periods.push(period[0]);
+          getAllIntervals(units, periods);
+        }); 
+      } else {
+        getAllIntervals(units, periods);
+      }
+    }
   });
+}
+
+function getAllIntervals(units, periods) {
+  // 3. Find the late_age and early_age of all periods returned
+  var late = d3.min(periods, function(d) { return d.late_age }),
+      early = d3.max(periods, function(d) { return d.early_age });
+
+  // Draw the units
+  var scale = d3.scale.linear()
+    .domain([late, early])
+    .range([0, 800]);
+
+  drawUnits(scale, units);
+
+  // 4. Basically redo #1, but with this new range
+  // Find all intervals in this period
+  d3.json("http://localhost:5000/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
+    data.success.data.forEach(function(d) {
+     // d.boundaries = 0;
+      d.children = [];
+      d.boundaries = [];
+      d.t_boundaries = 0;
+    });
+    countBoundaries(data.success.data, units);
+  });
+
 }
 
 
@@ -167,7 +196,19 @@ function hierarch(intervals) {
     });
   });
 
-  draw(periods);
+  if (periods.length > 1) {
+    var wrapper = {
+      "color": "#000",
+      "early_age": d3.max(periods, function(d) { return d.early_age }),
+      "late_age": d3.min(periods, function(d) { return d.late_age }),
+      "name": "time",
+      "children": periods
+    }
+    draw([wrapper]);
+  } else {
+    draw(periods);
+  }
+    
  // draw2(periods);
 }
 
@@ -181,7 +222,8 @@ function draw(data) {
   var svg = d3.select("#column").append("svg")
       .attr("width", width)
       .attr("height", height)
-      .append("g");
+      .append("g")
+         .attr("id", "timescale");
 
   var scale = d3.scale.linear()
       .domain([0, 1])
@@ -206,12 +248,12 @@ function draw(data) {
       .data(nodes)
     .enter().append("rect")
       .attr("class", "node")
-      .attr("id", function(d) { return "n" + d.id })
+      .attr("id", function(d) { return "n" + d.name })
       .attr("x", function(d) { return d.y * (width/height); })
       .attr("y", function(d) { return d.x * (height/width); })
       .attr("width", function(d) { return d.dy * (width/height); })
       .attr("height", function(d) { return d.dx * (height/width); })
-      .style("fill", function(d) { return d.color });
+      .style("fill", function(d) { return d.color })
 
   svg.selectAll(".label")
       .data(nodes.filter(function(d) { return d.dx > 6; }))
@@ -220,7 +262,6 @@ function draw(data) {
       .attr("dy", ".35em")
       .attr("transform", function(d) { return "translate(" + ((d.y * (width/height)) + ((d.dy * (width/height)) / 2)) + "," + ((d.x * (height/width)) + ((d.dx * (height/width)) / 2)) + ")rotate(-90)"; })
       .text(function(d) { return d.name; });
-
 
 }
 
@@ -271,11 +312,13 @@ function drawUnits(scale, units) {
   console.log(columns);
 
   var width = 300,
-    height = 800;
+      height = 800;
+      
   var svg = d3.select("#column2").append("svg")
     .attr("width", width)
     .attr("height", height)
     .append("g")
+      .attr("id", "section");
 
   svg.selectAll(".units")
     .data(units)
