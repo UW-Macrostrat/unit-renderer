@@ -185,6 +185,7 @@ function draw(data) {
       zoom(d.id);
     });
 
+  displayLabelsIntervals();
 }
 
 function zoom(id) {
@@ -218,9 +219,16 @@ function zoomOut() {
       return units.scale(d.late_age);
     });
 
+  var x = 0;
   // Reset the time interval labels
   d3.selectAll(".interval_label")
-    .attr("transform", function(d) { return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; })
+    .transition()
+    .duration(1000)
+    .each(function(){ ++x; })
+    .attr("transform", function(d) { 
+      return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; 
+    })
+    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
 
   // Reset the section
   d3.selectAll(".unit_node")
@@ -236,7 +244,7 @@ function zoomOut() {
     .duration(1000)
     .each(function(){ ++n; })
     .attr("transform", function(d) { return "translate(" + (units.column_x_lookup[d.col] + (units.width/units.columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
-    .each("end", function() { if (!--n) { displayLabels() }});
+    .each("end", function() { if (!--n) { displayLabelsUnits() }});
 }
 
 
@@ -249,6 +257,7 @@ function zoomIn(scaleF, translate) {
   d3.selectAll(".interval_node")
     .transition()
     .duration(1000)
+    .each(function(){ ++x; })
     .attr("height", function(d) {
       return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
     })
@@ -256,17 +265,20 @@ function zoomIn(scaleF, translate) {
       return (d3.select(this).attr("y") * scaleF) - translate;
     });
 
+  var x = 0;
+
   // Readjust the time interval labels
   d3.selectAll(".interval_label")
     .transition()
     .duration(1000)
-    .each(function(){ ++n; })
+    .each(function(){ ++x; })
     .attr("transform", function(d) {
       var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
           x = currentTransform[0],
           y = currentTransform[1];
       return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
     })
+    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
 
   // Zoom the section
   d3.selectAll(".unit_node")
@@ -291,12 +303,12 @@ function zoomIn(scaleF, translate) {
           y = currentTransform[1];
       return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
     })
-    .each("end", function() { if (!--n) { displayLabels() }});
+    .each("end", function() { if (!--n) { displayLabelsUnits() }});
 }
 
-function displayLabels() {
+function displayLabelsUnits() {
   d3.selectAll(".unit_label")
-    .attr("display", function(d) {
+    .style("display", function(d) {
       var textHeight = d3.select("#ul" + d.id).node().getBBox().height,
           boxHeight = d3.select("#u" + d.id).attr("height");
 
@@ -306,11 +318,13 @@ function displayLabels() {
         return "block";
       }
     });
+}
 
+function displayLabelsIntervals() {
   d3.selectAll(".interval_label")
-    .attr("display", function(d) {
+    .style("display", function(d) {
       var textHeight = d3.select("#nl" + d.id).node().getBBox().width,
-          boxHeight = d3.select("#n" + d.id).attr("height");
+          boxHeight = d3.select("#n" + d.id).attr("height") - 10;
 
       if (textHeight > boxHeight) {
         return "none";
@@ -318,7 +332,6 @@ function displayLabels() {
         return "block";
       }
     });
-
 }
 
 function drawUnits() {
@@ -405,7 +418,7 @@ function drawUnits() {
     .style("fill", function(d) { return d.text_color })
     .text(function(d) { return d.strat_name; });
   
-  displayLabels();
+  displayLabelsUnits();
 }
 
 
