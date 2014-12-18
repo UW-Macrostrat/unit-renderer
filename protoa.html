@@ -48,7 +48,7 @@ function getSection(id) {
 
 
 function getTimeIntervals(early, late, units) {
-  // 1. Find all intervals that overlap this range
+  // 1. Find all periods that cross this range
   d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
     // 2. Check if any periods were returned
     var periods = data.success.data.filter(function(d) {
@@ -57,43 +57,49 @@ function getTimeIntervals(early, late, units) {
       }
     });
 
-    // 2B. Otherwise, find the period that contains the midpoint of this range
+    // 2B. If no periods returned, find the period that intersects the midpoint time of this section
     if (periods.length < 1) {
       d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + parseInt(((early + late) / 2)), function(error, data) {
-        getAllIntervals(units, data.success.data);
+        verifyIntervals(early, late, data.success.data, units);
       });
 
-    // 2A. If so, continue on
+    // 2A. If at least one period was returned, carry on our wayward song
     } else {
-      if (d3.min(periods, function(d) { return d.late_age }) > late) {
-        // Not late enough
-        console.log("not late enough");
-        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
-          var period = data.success.data.filter(function(d) {
-            if (d.type === "period") {
-              return d;
-            }
-          });
-          periods.push(period[0]);
-          getAllIntervals(units, periods);
-        });
-      } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
-        // Not early enough
-        console.log("not early enough");
-        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
-          var period = data.success.data.filter(function(d) {
-            if (d.type === "period") {
-              return d;
-            }
-          });
-          periods.push(period[0]);
-          getAllIntervals(units, periods);
-        }); 
-      } else {
-        getAllIntervals(units, periods);
-      }
+      verifyIntervals(early, late, periods, units);
     }
+  
   });
+}
+
+function verifyIntervals(early, late, periods, units) {
+  // If the latest age of the periods doesn't cover our range, go get the period that does
+  if (d3.min(periods, function(d) { return d.late_age }) > late) {
+    // Not late enough
+    d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
+      var period = data.success.data.filter(function(d) {
+        if (d.type === "period") {
+          return d;
+        }
+      });
+      periods.push(period[0]);
+      getAllIntervals(units, periods);
+    });
+  // If the earliest age of the periods doesn't cover our range, go get the period that does
+  } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
+    // Not early enough
+    d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
+      var period = data.success.data.filter(function(d) {
+        if (d.type === "period") {
+          return d;
+        }
+      });
+      periods.push(period[0]);
+      getAllIntervals(units, periods);
+    }); 
+  // Otherwise, carry on lad
+  } else {
+    getAllIntervals(units, periods);
+  }
 }
 
 function getAllIntervals(units, periods) {
