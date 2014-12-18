@@ -12,6 +12,13 @@
 .label {
   font: 10px sans-serif;
   text-anchor: middle;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: default;
 }
 
 #column, #column2 {
@@ -32,7 +39,14 @@
   4. Scrollable?
 */
 var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
-    units = {};
+    units = {
+      width: 600,
+      height: 800
+    },
+    intervals = {
+      width: 50,
+      height: 800
+    }
 
 function getSection(id) {
   d3.json(baseURL + "/api/units?response=long&section_id=" + id, function(error, data) {
@@ -123,60 +137,70 @@ function getAllIntervals(periods) {
 }
 
 function draw(data) {
-  var width = 50,
-      height = 800;
 
   d3.select("#column").select("svg").remove();
 
   var svg = d3.select("#column").append("svg")
-      .attr("width", width)
-      .attr("height", height)
+      .attr("width", intervals.width)
+      .attr("height", intervals.height)
       .append("g")
         .attr("id", "timescale")
         .attr("data-zoomed", "false");;
 
   var scale = d3.scale.linear()
       .domain([d3.min(data, function(d) { return d.late_age }), d3.max(data, function(d) { return d.early_age})])
-      .range([0, height])
+      .range([0, intervals.height])
 
   var interval_lookup = {
     "period": 0,
-    "epoch": width * 0.3,
-    "age": width * 0.6
+    "epoch": intervals.width * 0.3,
+    "age": intervals.width * 0.6
   }
+
+  intervals.interval_lookup = interval_lookup;
 
   svg.selectAll(".node")
     .data(data)
   .enter().append("rect")
     .attr("class", "node interval_node")
-    .attr("id", function(d) { return "n" + d.name })
+    .attr("id", function(d) { return "n" + d.id })
     .attr("x", function(d) { return interval_lookup[d.type] })
     .attr("y", function(d) { return scale(d.late_age) })
-    .attr("width", width * 0.3)
+    .attr("width", intervals.width * 0.3)
     .attr("height", function(d) { return scale(d.early_age) - scale(d.late_age)})
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
-      if (svg.attr("data-zoomed") === "false") {
-        
-        var scaleY = height/d3.select(this).attr("height"),
-            translate = d3.select(this).attr("y") * scaleY;
-
-        zoomIn(scaleY, translate);
-
-      } else {
-        zoomOut();
-      }
+      zoom(d.id);
     });
 
   svg.selectAll(".label")
     .data(data)
   .enter().append("text")
-    .attr("class", "label")
+    .attr("class", "label interval_label")
+    .attr("id", function(d) { return "nl" + d.id })
     .attr("dy", ".35em")
-    .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
-    .text(function(d) { return d.name; });
+    .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
+    .text(function(d) { return d.name; })
+    .on("click", function(d) {
+      zoom(d.id);
+    });
 
 }
+
+function zoom(id) {
+  if (d3.select("#timescale").attr("data-zoomed") === "false") {
+    
+    var scaleY = units.height/d3.select("#n" + id).attr("height"),
+        translate = d3.select("#n" + id).attr("y") * scaleY;
+
+    zoomIn(scaleY, translate);
+
+  } else {
+    zoomOut();
+  }
+
+}
+
 
 function zoomOut() {
   // Indicate that we are zoomed out
@@ -194,13 +218,27 @@ function zoomOut() {
       return units.scale(d.late_age);
     });
 
+  // Reset the time interval labels
+  d3.selectAll(".interval_label")
+    .attr("transform", function(d) { return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; })
+
   // Reset the section
   d3.selectAll(".unit_node")
     .transition()
     .duration(1000)
     .attr("y", function(d) { return units.scale(d.t_age) })
-    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
+    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
+
+  var n = 0;
+  // Reset the unit labels 
+  d3.selectAll(".unit_label")
+    .transition()
+    .duration(1000)
+    .each(function(){ ++n; })
+    .attr("transform", function(d) { return "translate(" + (units.column_x_lookup[d.col] + (units.width/units.columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+    .each("end", function() { if (!--n) { displayLabels() }});
 }
+
 
 function zoomIn(scaleF, translate) {
   // Indicate that we are zoomed in
@@ -218,6 +256,18 @@ function zoomIn(scaleF, translate) {
       return (d3.select(this).attr("y") * scaleF) - translate;
     });
 
+  // Readjust the time interval labels
+  d3.selectAll(".interval_label")
+    .transition()
+    .duration(1000)
+    .each(function(){ ++n; })
+    .attr("transform", function(d) {
+      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+          x = currentTransform[0],
+          y = currentTransform[1];
+      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
+    })
+
   // Zoom the section
   d3.selectAll(".unit_node")
     .transition()
@@ -228,6 +278,47 @@ function zoomIn(scaleF, translate) {
     .attr("y", function(d) { 
       return (d3.select(this).attr("y") * scaleF) - translate;
     });
+
+  var n = 0;
+  // Readjust the unit labels
+  d3.selectAll(".unit_label")
+    .transition()
+    .duration(1000)
+    .each(function(){ ++n; })
+    .attr("transform", function(d) {
+      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+          x = currentTransform[0],
+          y = currentTransform[1];
+      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
+    })
+    .each("end", function() { if (!--n) { displayLabels() }});
+}
+
+function displayLabels() {
+  d3.selectAll(".unit_label")
+    .attr("display", function(d) {
+      var textHeight = d3.select("#ul" + d.id).node().getBBox().height,
+          boxHeight = d3.select("#u" + d.id).attr("height");
+
+      if (textHeight > boxHeight) {
+        return "none";
+      } else {
+        return "block";
+      }
+    });
+
+  d3.selectAll(".interval_label")
+    .attr("display", function(d) {
+      var textHeight = d3.select("#nl" + d.id).node().getBBox().width,
+          boxHeight = d3.select("#n" + d.id).attr("height");
+
+      if (textHeight > boxHeight) {
+        return "none";
+      } else {
+        return "block";
+      }
+    });
+
 }
 
 function drawUnits() {
@@ -274,20 +365,18 @@ function drawUnits() {
 
   });
 
-  console.log(columns);
-
-  var width = 600,
-      height = 800;
-
   var column_x_lookup = {
-    0: 0,
-    1: width/columns.length,
-    2: width/columns.length + width/columns.length
-  }
+      0: 0,
+      1: units.width/columns.length,
+      2: units.width/columns.length + units.width/columns.length
+    }
+
+  units.columns = columns;
+  units.column_x_lookup = column_x_lookup;
       
   var svg = d3.select("#column2").append("svg")
-    .attr("width", width)
-    .attr("height", height)
+    .attr("width", units.width)
+    .attr("height", units.height)
     .append("g")
       .attr("id", "section");
 
@@ -296,9 +385,9 @@ function drawUnits() {
   .enter().append("rect")
     .attr("class", "node unit_node")
     .attr("id", function(d) { return "u" + d.id })
-    .attr("x", function(d) { return column_x_lookup[d.col] })
+    .attr("x", function(d) { return units.column_x_lookup[d.col] })
     .attr("y", function(d) { return units.scale(d.t_age) })
-    .attr("width", width/columns.length)
+    .attr("width", units.width/columns.length)
     .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
     .style("fill", function(d) { return d.color });
 
@@ -312,10 +401,11 @@ function drawUnits() {
     .attr("class", "label unit_label")
     .attr("id", function(d) { return "ul" + d.id })
     .attr("dy", ".35em")
-    .attr("transform", function(d) { return "translate(" + (column_x_lookup[d.col] + (width/columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+    .attr("transform", function(d) { return "translate(" + (units.column_x_lookup[d.col] + (units.width/columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
     .style("fill", function(d) { return d.text_color })
     .text(function(d) { return d.strat_name; });
   
+  displayLabels();
 }
 
 
