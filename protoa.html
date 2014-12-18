@@ -27,27 +27,27 @@
 <script>
 /*
   1. Create Member-group-unit hierarchy, where applicable
-  2. Change units route to get real color + text color
-  3. Make section wider
   4. Texture units based on 'lith'
+  5. Handle text display properly
   4. Scrollable?
 */
-var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org"
+var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
+    units = {};
 
 function getSection(id) {
   d3.json(baseURL + "/api/units?response=long&section_id=" + id, function(error, data) {
-    var units = data.success.data;
+    units.data = data.success.data;
 
-    var late_age = d3.min(units, function(d) { return d.LO_age }),
-        early_age = d3.max(units, function(d) { return d.FO_age });
+    var late_age = d3.min(units.data, function(d) { return d.LO_age }),
+        early_age = d3.max(units.data, function(d) { return d.FO_age });
     
-    getTimeIntervals(early_age, late_age, units);
+    getTimeIntervals(early_age, late_age);
 
   });
 }
 
 
-function getTimeIntervals(early, late, units) {
+function getTimeIntervals(early, late) {
   // 1. Find all periods that cross this range
   d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
     // 2. Check if any periods were returned
@@ -60,18 +60,18 @@ function getTimeIntervals(early, late, units) {
     // 2B. If no periods returned, find the period that intersects the midpoint time of this section
     if (periods.length < 1) {
       d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + parseInt(((early + late) / 2)), function(error, data) {
-        verifyIntervals(early, late, data.success.data, units);
+        verifyIntervals(early, late, data.success.data);
       });
 
     // 2A. If at least one period was returned, carry on our wayward song
     } else {
-      verifyIntervals(early, late, periods, units);
+      verifyIntervals(early, late, periods);
     }
   
   });
 }
 
-function verifyIntervals(early, late, periods, units) {
+function verifyIntervals(early, late, periods) {
   // If the latest age of the periods doesn't cover our range, go get the period that does
   if (d3.min(periods, function(d) { return d.late_age }) > late) {
     // Not late enough
@@ -82,7 +82,7 @@ function verifyIntervals(early, late, periods, units) {
         }
       });
       periods.push(period[0]);
-      getAllIntervals(units, periods);
+      getAllIntervals(periods);
     });
   // If the earliest age of the periods doesn't cover our range, go get the period that does
   } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
@@ -94,36 +94,29 @@ function verifyIntervals(early, late, periods, units) {
         }
       });
       periods.push(period[0]);
-      getAllIntervals(units, periods);
+      getAllIntervals(periods);
     }); 
   // Otherwise, carry on lad
   } else {
-    getAllIntervals(units, periods);
+    getAllIntervals(periods);
   }
 }
 
-function getAllIntervals(units, periods) {
+function getAllIntervals(periods) {
   // 3. Find the late_age and early_age of all periods returned
   var late = d3.min(periods, function(d) { return d.late_age }),
       early = d3.max(periods, function(d) { return d.early_age });
 
   // Draw the units
-  var scale = d3.scale.linear()
+  units.scale = d3.scale.linear()
     .domain([late, early])
     .range([0, 800]);
 
-  drawUnits(scale, units);
+  drawUnits();
 
   // 4. Basically redo #1, but with this new range
   // Find all intervals in this period
   d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
-    data.success.data.forEach(function(d) {
-     // d.boundaries = 0;
-      d.children = [];
-      d.boundaries = [];
-      d.t_boundaries = 0;
-    });
-    //countBoundaries(data.success.data, units);
     draw(data.success.data)
   });
 
@@ -155,7 +148,7 @@ function draw(data) {
   svg.selectAll(".node")
     .data(data)
   .enter().append("rect")
-    .attr("class", "node")
+    .attr("class", "node interval_node")
     .attr("id", function(d) { return "n" + d.name })
     .attr("x", function(d) { return interval_lookup[d.type] })
     .attr("y", function(d) { return scale(d.late_age) })
@@ -164,25 +157,17 @@ function draw(data) {
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
       if (svg.attr("data-zoomed") === "false") {
-        svg.attr("data-zoomed", "true");
-        var translateY = d3.select(this).attr("y"),
-            scaleY = 800/d3.select(this).attr("height");
+        
+        var scaleY = height/d3.select(this).attr("height"),
+            translate = d3.select(this).attr("y") * scaleY;
 
-        d3.selectAll("#timescale, #section")
-          .transition()
-          .duration(1000)
-          .attr("transform", "scale(1," + scaleY + ")translate(0,-" + translateY + ")");
+        zoomIn(scaleY, translate);
+
       } else {
-        svg.attr("data-zoomed", "false");
-        d3.selectAll("#timescale, #section")
-          .transition()
-          .duration(1000)
-          .attr("transform", "scale(1,1)translate(0,0)");
+        zoomOut();
       }
     });
 
-
-/*
   svg.selectAll(".label")
     .data(data)
   .enter().append("text")
@@ -190,17 +175,69 @@ function draw(data) {
     .attr("dy", ".35em")
     .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
     .text(function(d) { return d.name; });
-*/
+
 }
 
-function drawUnits(scale, units) {
+function zoomOut() {
+  // Indicate that we are zoomed out
+  d3.select("#timescale")
+    .attr("data-zoomed", "false");
+
+  // Reset the timescale
+  d3.selectAll(".interval_node")
+    .transition()
+    .duration(1000)
+    .attr("height", function(d) {
+      return units.scale(d.early_age) - units.scale(d.late_age);
+    })
+    .attr("y", function(d) {
+      return units.scale(d.late_age);
+    });
+
+  // Reset the section
+  d3.selectAll(".unit_node")
+    .transition()
+    .duration(1000)
+    .attr("y", function(d) { return units.scale(d.t_age) })
+    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
+}
+
+function zoomIn(scaleF, translate) {
+  // Indicate that we are zoomed in
+  d3.select("#timescale")
+    .attr("data-zoomed", "true");
+
+  // Zoom the timescale
+  d3.selectAll(".interval_node")
+    .transition()
+    .duration(1000)
+    .attr("height", function(d) {
+      return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
+    })
+    .attr("y", function(d) {
+      return (d3.select(this).attr("y") * scaleF) - translate;
+    });
+
+  // Zoom the section
+  d3.selectAll(".unit_node")
+    .transition()
+    .duration(1000)
+    .attr("height", function(d) { 
+      return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
+    })
+    .attr("y", function(d) { 
+      return (d3.select(this).attr("y") * scaleF) - translate;
+    });
+}
+
+function drawUnits() {
   var columns = [
     {
       'top': -1,
       'bottom': -1
     }
   ];
-  units.forEach(function(d) {
+  units.data.forEach(function(d) {
     if (d.t_age > d.b_age) {
       console.log(d.strat_name + " IS BASS ACKWARDS");
       return;
@@ -241,6 +278,12 @@ function drawUnits(scale, units) {
 
   var width = 600,
       height = 800;
+
+  var column_x_lookup = {
+    0: 0,
+    1: width/columns.length,
+    2: width/columns.length + width/columns.length
+  }
       
   var svg = d3.select("#column2").append("svg")
     .attr("width", width)
@@ -249,24 +292,30 @@ function drawUnits(scale, units) {
       .attr("id", "section");
 
   svg.selectAll(".units")
-    .data(units)
+    .data(units.data)
   .enter().append("rect")
-    .attr("class", "node")
-    .attr("id", function(d) { return d.strat_name })
-    .attr("x", function(d) { return d.col * 50 })
-    .attr("y", function(d) { return scale(d.t_age) })
-    .attr("width", 50)
-    .attr("height", function(d) { return scale(d.b_age) - scale(d.t_age)})
+    .attr("class", "node unit_node")
+    .attr("id", function(d) { return "u" + d.id })
+    .attr("x", function(d) { return column_x_lookup[d.col] })
+    .attr("y", function(d) { return units.scale(d.t_age) })
+    .attr("width", width/columns.length)
+    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
     .style("fill", function(d) { return d.color });
-/*
-  svg.selectAll(".unit_label")
-    .data(units)
+
+  d3.select("#column2")
+    .select("svg")
+  .append("g")
+    .attr("id", "unit_labels")
+  .selectAll(".unit_label")
+    .data(units.data)
   .enter().append("text")
-    .attr("class", "label")
+    .attr("class", "label unit_label")
+    .attr("id", function(d) { return "ul" + d.id })
     .attr("dy", ".35em")
-    .attr("transform", function(d) { return "translate(" + (d.col * 50 + 25)  + "," + (scale(d.t_age) + (scale(d.b_age) - scale(d.t_age))/2) + ")rotate(-90)" })
+    .attr("transform", function(d) { return "translate(" + (column_x_lookup[d.col] + (width/columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+    .style("fill", function(d) { return d.text_color })
     .text(function(d) { return d.strat_name; });
-  */
+  
 }
 
 
