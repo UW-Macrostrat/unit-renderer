@@ -25,7 +25,13 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <!--<script src="d3.v3.min.js"></script>-->
 <script>
-
+/*
+  1. Create Member-group-unit hierarchy, where applicable
+  2. Change units route to get real color + text color
+  3. Make section wider
+  4. Texture units based on 'lith'
+  4. Scrollable?
+*/
 var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org"
 
 function getSection(id) {
@@ -53,7 +59,7 @@ function getTimeIntervals(early, late, units) {
 
     // 2B. Otherwise, find the period that contains the midpoint of this range
     if (periods.length < 1) {
-      d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
+      d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + parseInt(((early + late) / 2)), function(error, data) {
         getAllIntervals(units, data.success.data);
       });
 
@@ -227,7 +233,7 @@ function drawUnits(scale, units) {
 
   console.log(columns);
 
-  var width = 300,
+  var width = 600,
       height = 800;
       
   var svg = d3.select("#column2").append("svg")
