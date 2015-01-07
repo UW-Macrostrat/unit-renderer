@@ -21,6 +21,10 @@
   cursor: default;
 }
 
+.section_node {
+  cursor: pointer;
+}
+
 #timescaleContainer, #stratContainer, #sectionContainer {
   display: inline;
 }
@@ -337,34 +341,8 @@ function zoomIn(scaleF, translate) {
   d3.select("#timescale")
     .attr("data-zoomed", "true");
 
-  // Zoom the timescale
-  d3.selectAll(".interval_node")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++x; })
-    .attr("height", function(d) {
-      return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
-    })
-    .attr("y", function(d) {
-      return (d3.select(this).attr("y") * scaleF) - translate;
-    });
-
+  zoomInTimescale(scaleF, translate)
   zoomInSection(scaleF, translate);
-
-  var x = 0;
-  // Readjust the time interval labels
-  d3.selectAll(".interval_label")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++x; })
-    .attr("transform", function(d) {
-      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-          x = currentTransform[0],
-          y = currentTransform[1];
-      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
-    })
-    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
-
   // Zoom the units
   d3.selectAll(".unit_node")
     .transition()
@@ -389,6 +367,35 @@ function zoomIn(scaleF, translate) {
       return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
     })
     .each("end", function() { if (!--n) { displayLabelsUnits() }});
+}
+
+function zoomInTimescale(scaleF, translate) {
+  // Zoom the timescale
+  d3.selectAll(".interval_node")
+    .transition()
+    .duration(1000)
+    .each(function(){ ++x; })
+    .attr("height", function(d) {
+      return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
+    })
+    .attr("y", function(d) {
+      return (d3.select(this).attr("y") * scaleF) - translate;
+    });
+  setTimeout(displayLabelsIntervals, 1100);
+  var x = 0;
+  // Readjust the time interval labels
+  d3.selectAll(".interval_label")
+    .transition()
+    .duration(1000)
+    .each(function(){ ++x; })
+    .attr("transform", function(d) {
+      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+          x = currentTransform[0],
+          y = currentTransform[1];
+      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
+    })
+    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
+
 }
 
 function zoomInSection(scaleF, translate) {
@@ -437,7 +444,7 @@ function displayLabelsIntervals() {
   d3.selectAll(".interval_label")
     .style("display", function(d) {
       var textWidth = d3.select("#nl" + d.id).node().getBBox().width,
-          boxWidth = parseFloat(d3.select("#n" + d.id).attr("width") - 10);
+          boxWidth = parseFloat(d3.select("#n" + d.id).attr("height") - 10);
 
       if (textWidth > boxWidth) {
         return "none";
