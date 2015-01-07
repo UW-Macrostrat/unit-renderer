@@ -436,10 +436,10 @@ function displayLabelsUnits() {
 function displayLabelsIntervals() {
   d3.selectAll(".interval_label")
     .style("display", function(d) {
-      var textHeight = d3.select("#nl" + d.id).node().getBBox().width,
-          boxHeight = parseFloat(d3.select("#n" + d.id).attr("height") - 10);
+      var textWidth = d3.select("#nl" + d.id).node().getBBox().width,
+          boxWidth = parseFloat(d3.select("#n" + d.id).attr("width") - 10);
 
-      if (textHeight > boxHeight) {
+      if (textWidth > boxWidth) {
         return "none";
       } else {
         return "block";
