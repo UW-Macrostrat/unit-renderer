@@ -72,8 +72,21 @@
 // Temporary way to toggle between unit and section view
 d3.select("body").on("contextmenu", function(d) {
   d3.event.preventDefault();
-  swapViews();
+  adjust.graphic.swapViews();
 });
+
+var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
+    units = {
+      width: 600,
+      height: 800
+    },
+    intervals = {
+      width: 50,
+      height: 800
+    },
+    column = {
+
+    }
 
 function init() {
   var chunk = window.location.hash.replace("#/", "");
@@ -160,20 +173,6 @@ function getTimescaleData() {
 }
 
 
-var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
-    units = {
-      width: 600,
-      height: 800
-    },
-    intervals = {
-      width: 50,
-      height: 800
-    },
-    column = {
-
-    }
-
-
 function drawTimescale(data, type) {
 
   var min = d3.min(data, function(d) { return d.late_age }),
@@ -213,7 +212,7 @@ function drawTimescale(data, type) {
     .attr("height", function(d) { return scale(d.early_age) - scale(d.late_age)})
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
-      zoom(d.id);
+      zoom.go(d.id);
     });
 
   svg.selectAll(".label")
@@ -225,248 +224,13 @@ function drawTimescale(data, type) {
     .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
     .text(function(d) { return d.name; })
     .on("click", function(d) {
-      zoom(d.id);
+      zoom.go(d.id);
     });
 
-  displayLabelsIntervals();
-}
-
-function adjustPosition() {
-  var chunk = window.location.hash.replace("#/", "");
-
-  if (chunk.indexOf("section=") > -1) {
-    // We have section
-    goToUnitView();
-    var section = chunk.replace("section=", "");
-    column.sections.forEach(function(d) {
-      if (d.id == section) {
-        console.log(d);
-        zoom(d.interval);
-      }
-    });
-  } else if (chunk.indexOf("column=") > -1) {
-    // We have a column
-    goToSectionView()
-  } else {
-    // Punt
-    goToUnitView();
-  }
-}
-
-function zoom(id) {
-  if (d3.select("#timescale").attr("data-zoomed") === "false") {
-    
-    var scaleY = units.height/d3.select("#n" + id).attr("height"),
-        translate = d3.select("#n" + id).attr("y") * scaleY;
-
-    zoomIn(scaleY, translate);
-
-  } else {
-    zoomOut();
-  }
+  adjust.labels.timescale();
 
 }
 
-
-function zoomOut() {
-  // Indicate that we are zoomed out
-  d3.select("#timescale")
-    .attr("data-zoomed", "false");
-
-  // Reset the timescale
-  d3.selectAll(".interval_node")
-    .transition()
-    .duration(1000)
-    .attr("height", function(d) {
-      return units.scale(d.early_age) - units.scale(d.late_age);
-    })
-    .attr("y", function(d) {
-      return units.scale(d.late_age);
-    });
-
-  zoomOutSections();
-  zoomOutUnits();
-
-  var x = 0;
-  // Reset the time interval labels
-  d3.selectAll(".interval_label")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++x; })
-    .attr("transform", function(d) { 
-      return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; 
-    })
-    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
-}
-
-function zoomOutUnits() {
-  // Reset the units
-  d3.selectAll(".unit_node")
-    .transition()
-    .duration(1000)
-    .attr("y", function(d) { return units.scale(d.t_age) })
-    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
-
-  var n = 0;
-  // Reset the unit labels 
-  d3.selectAll(".unit_label")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++n; })
-    .attr("transform", function(d) { return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/column.sectionLookup[d.section_id].columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
-    .each("end", function() { if (!--n) { displayLabelsUnits() }});
-}
-
-function zoomOutSections() {
-  // Reset the sections
-  d3.selectAll(".section_node")
-    .transition()
-    .duration(1000)
-    .attr("y", function(d) { return units.scale(d.t_age) })
-    .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
-
-  var n = 0;
-  // Reset the unit labels 
-  d3.selectAll(".unit_label_section")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++n; })
-    .attr("transform", function(d) { return "translate(" + (units.width/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
-    .each("end", function() { if (!--n) { displayLabelsSections(); }});
-}
-
-
-function zoomIn(scaleF, translate) {
-  // Indicate that we are zoomed in
-  d3.select("#timescale")
-    .attr("data-zoomed", "true");
-
-  zoomInTimescale(scaleF, translate)
-  zoomInSection(scaleF, translate);
-  // Zoom the units
-  d3.selectAll(".unit_node")
-    .transition()
-    .duration(1000)
-    .attr("height", function(d) { 
-      return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
-    })
-    .attr("y", function(d) { 
-      return (d3.select(this).attr("y") * scaleF) - translate;
-    });
-
-  var n = 0;
-  // Readjust the unit labels
-  d3.selectAll(".unit_label")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++n; })
-    .attr("transform", function(d) {
-      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-          x = currentTransform[0],
-          y = currentTransform[1];
-      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
-    })
-    .each("end", function() { if (!--n) { displayLabelsUnits() }});
-}
-
-function zoomInTimescale(scaleF, translate) {
-  // Zoom the timescale
-  d3.selectAll(".interval_node")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++x; })
-    .attr("height", function(d) {
-      return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
-    })
-    .attr("y", function(d) {
-      return (d3.select(this).attr("y") * scaleF) - translate;
-    });
-  setTimeout(displayLabelsIntervals, 1100);
-  var x = 0;
-  // Readjust the time interval labels
-  d3.selectAll(".interval_label")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++x; })
-    .attr("transform", function(d) {
-      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-          x = currentTransform[0],
-          y = currentTransform[1];
-      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
-    })
-    .each("end", function() { if (!--x) { displayLabelsIntervals() }});
-
-}
-
-function zoomInSection(scaleF, translate) {
-  // Zoom the section
-  d3.selectAll(".section_node")
-    .transition()
-    .duration(1000)
-    .attr("height", function(d) { 
-      return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
-    })
-    .attr("y", function(d) { 
-      return (d3.select(this).attr("y") * scaleF) - translate;
-    });
-
-  var n = 0;
-  // Readjust the unit labels
-  d3.selectAll(".unit_label_section")
-    .transition()
-    .duration(1000)
-    .each(function(){ ++n; })
-    .attr("transform", function(d) {
-      var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-          x = currentTransform[0],
-          y = currentTransform[1];
-      return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
-    })
-    .each("end", function() { if (!--n) { displayLabelsSections() }});
-}
-
-function displayLabelsUnits() {
-  d3.selectAll(".unit_label")
-    .style("display", function(d) {
-      var textHeight = d3.select("#ul" + d.id).node().getBBox().height,
-          boxHeight = parseFloat(d3.select("#u" + d.id).attr("height") - 10);
-
-      if (textHeight > boxHeight) {
-        return "none";
-      } else {
-        return "block";
-      }
-    });
-}
-
-
-function displayLabelsIntervals() {
-  d3.selectAll(".interval_label")
-    .style("display", function(d) {
-      var textWidth = d3.select("#nl" + d.id).node().getBBox().width,
-          boxWidth = parseFloat(d3.select("#n" + d.id).attr("height") - 10);
-
-      if (textWidth > boxWidth) {
-        return "none";
-      } else {
-        return "block";
-      }
-    });
-}
-
-function displayLabelsSections() {
-  d3.selectAll(".unit_label_section")
-    .style("display", function(d) {
-      var textHeight = d3.select("#sl" + d.id).node().getBBox().height,
-          boxHeight = parseFloat(d3.select("#s" + d.id).attr("height") - 10);
-
-      if (textHeight > boxHeight) {
-        return "none";
-      } else {
-        return "block";
-      }
-    });
-}
 
 function drawSections() {
   var intervalRanks = {
@@ -517,11 +281,11 @@ function drawSections() {
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
       if (d.interval) {
-        zoom(d.interval)
-        swapViews();
+        zoom.go(d.interval)
+        adjust.graphic.swapViews();
         console.log(d);
       } else {
-        swapViews();
+        adjust.graphic.swapViews();
       }
     });
 
@@ -539,8 +303,8 @@ function drawSections() {
     .style("fill", function(d) { return d.text_color })
     .text(function(d) { return d.strat_name; });
   
-  adjustPosition();
-  displayLabelsSections();
+  adjust.graphic.position();
+  adjust.labels.sections();
 }
 
 
@@ -662,50 +426,303 @@ function drawStrats() {
       .style("fill", function(d) { return d.text_color })
       .text(function(d) { return d.strat_name; });
     
-    displayLabelsUnits();
+    adjust.labels.units();
   });
 }
 
-function swapViews() {
-  if (column.sections.visible === true) {
-    goToUnitView();
-  } else {
-    goToSectionView()
+
+var zoom = {
+  go: function(id) {
+    if (d3.select("#timescale").attr("data-zoomed") === "false") {
+      
+      var scaleY = units.height/d3.select("#n" + id).attr("height"),
+          translate = d3.select("#n" + id).attr("y") * scaleY;
+
+      zoom.inn.go(scaleY, translate);
+
+    } else {
+      zoom.out.go();
+    }
+  },
+  
+  inn: {
+    go: function(scaleF, translate) {
+      // Indicate that we are zoomed in
+      d3.select("#timescale")
+        .attr("data-zoomed", "true");
+
+      this.timescale(scaleF, translate);
+      this.sections(scaleF, translate);
+      this.units(scaleF, translate);
+    },
+
+    timescale: function(scaleF, translate) {
+      var x = 0;
+      d3.selectAll(".interval_node")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++x; })
+        .attr("height", function(d) {
+          return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
+        })
+        .attr("y", function(d) {
+          return (d3.select(this).attr("y") * scaleF) - translate;
+        });
+
+      setTimeout(adjust.labels.timescale, 1100);
+
+      var n = 0;
+      // Readjust the time interval labels
+      d3.selectAll(".interval_label")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) {
+          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+              x = currentTransform[0],
+              y = currentTransform[1];
+          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
+        })
+        .each("end", function() { if (!--n) { adjust.labels.timescale() }});
+    },
+
+    sections: function(scaleF, translate) {
+      d3.selectAll(".section_node")
+        .transition()
+        .duration(1000)
+        .attr("height", function(d) { 
+          return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
+        })
+        .attr("y", function(d) { 
+          return (d3.select(this).attr("y") * scaleF) - translate;
+        });
+
+      var n = 0;
+      // Readjust the unit labels
+      d3.selectAll(".unit_label_section")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) {
+          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+              x = currentTransform[0],
+              y = currentTransform[1];
+          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
+        })
+        .each("end", function() { if (!--n) { adjust.labels.sections() }});
+    },
+
+    units: function(scaleF, translate) {
+      d3.selectAll(".unit_node")
+        .transition()
+        .duration(1000)
+        .attr("height", function(d) { 
+          return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
+        })
+        .attr("y", function(d) { 
+          return (d3.select(this).attr("y") * scaleF) - translate;
+        });
+
+      var n = 0;
+      // Readjust the unit labels
+      d3.selectAll(".unit_label")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) {
+          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
+              x = currentTransform[0],
+              y = currentTransform[1];
+          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
+        })
+        .each("end", function() { if (!--n) { adjust.labels.units() }});
+    }
+  },
+
+  out: {
+    go: function() {
+      // Indicate that we are zoomed out
+      d3.select("#timescale")
+        .attr("data-zoomed", "false");
+      
+      this.timescale();
+      this.sections();
+      this.units();
+    },
+
+    timescale: function() {
+      d3.selectAll(".interval_node")
+        .transition()
+        .duration(1000)
+        .attr("height", function(d) {
+          return units.scale(d.early_age) - units.scale(d.late_age);
+        })
+        .attr("y", function(d) {
+          return units.scale(d.late_age);
+        });
+
+      var n = 0;
+      // Reset the time interval labels
+      d3.selectAll(".interval_label")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) { 
+          return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; 
+        })
+        .each("end", function() { if (!--n) { adjust.labels.timescale() }});
+    },
+
+    sections: function() {
+      // Reset the sections
+      d3.selectAll(".section_node")
+        .transition()
+        .duration(1000)
+        .attr("y", function(d) { return units.scale(d.t_age) })
+        .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
+
+      var n = 0;
+      // Reset the unit labels 
+      d3.selectAll(".unit_label_section")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) { return "translate(" + (units.width/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+        .each("end", function() { if (!--n) { adjust.labels.sections(); }});
+    },
+
+    units: function() {
+      d3.selectAll(".unit_node")
+        .transition()
+        .duration(1000)
+        .attr("y", function(d) { return units.scale(d.t_age) })
+        .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
+
+      var n = 0;
+      // Reset the unit labels 
+      d3.selectAll(".unit_label")
+        .transition()
+        .duration(1000)
+        .each(function(){ ++n; })
+        .attr("transform", function(d) { return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/column.sectionLookup[d.section_id].columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+        .each("end", function() { if (!--n) { adjust.labels.units() }});
+    }
   }
 }
 
-function goToUnitView() {
-  column.sections.visible = false;
-  column.units.visible = true;
 
-  d3.select("#timescale").transition()
-    .duration(1000)
-    .attr("transform", "translate(0, 0)");
+var adjust = {
 
-  d3.select("#sectionContainer").select("svg").selectAll("g").transition()
-    .duration(1000)
-    .attr("transform", "translate(-1000,0)");
+  labels: {
+    timescale: function() {
+      d3.selectAll(".interval_label")
+        .style("display", function(d) {
+          var textWidth = d3.select("#nl" + d.id).node().getBBox().width,
+              boxWidth = parseFloat(d3.select("#n" + d.id).attr("height") - 10);
 
-  d3.select("#stratContainer").select("svg").selectAll("g").transition()
-    .duration(1000)
-    .attr("transform", "translate(0,0)");
-}
+          if (textWidth > boxWidth) {
+            return "none";
+          } else {
+            return "block";
+          }
+        });
+    },
 
-function goToSectionView() {
-  column.sections.visible = true;
-  column.units.visible = false;
+    sections: function() {
+      d3.selectAll(".unit_label_section")
+        .style("display", function(d) {
+          var textHeight = d3.select("#sl" + d.id).node().getBBox().height,
+              boxHeight = parseFloat(d3.select("#s" + d.id).attr("height") - 10);
 
-  d3.select("#timescale").transition()
-    .duration(1000)
-    .attr("transform", "translate(20, 0)");
+          if (textHeight > boxHeight) {
+            return "none";
+          } else {
+            return "block";
+          }
+        });
+    },
 
-  d3.select("#sectionContainer").select("svg").selectAll("g").transition()
-    .duration(1000)
-    .attr("transform", "translate(0,0)");
+    units: function() {
+      d3.selectAll(".unit_label")
+        .style("display", function(d) {
+          var textHeight = d3.select("#ul" + d.id).node().getBBox().height,
+              boxHeight = parseFloat(d3.select("#u" + d.id).attr("height") - 10);
 
-  d3.select("#stratContainer").select("svg").selectAll("g").transition()
-    .duration(1000)
-    .attr("transform", "translate(1000,0)");
+          if (textHeight > boxHeight) {
+            return "none";
+          } else {
+            return "block";
+          }
+        });
+    }
+  },
+
+  graphic: {
+    
+    position: function() {
+      var chunk = window.location.hash.replace("#/", "");
+
+      if (chunk.indexOf("section=") > -1) {
+        // We have section
+        this.showUnits();
+        var section = chunk.replace("section=", "");
+        column.sections.forEach(function(d) {
+          if (d.id == section) {
+            console.log(d);
+            zoom.go(d.interval);
+          }
+        });
+      } else if (chunk.indexOf("column=") > -1) {
+        // We have a column
+        this.showSections();
+      } else {
+        // Punt
+        this.showUnits();
+      }
+    },
+
+    swapViews: function() {
+      if (column.sections.visible === true) {
+        this.showUnits();
+      } else {
+        this.showSections();
+      }
+    },
+
+    showSections: function() {
+      column.sections.visible = true;
+      column.units.visible = false;
+
+      d3.select("#timescale").transition()
+        .duration(1000)
+        .attr("transform", "translate(20, 0)");
+
+      d3.select("#sectionContainer").select("svg").selectAll("g").transition()
+        .duration(1000)
+        .attr("transform", "translate(0,0)");
+
+      d3.select("#stratContainer").select("svg").selectAll("g").transition()
+        .duration(1000)
+        .attr("transform", "translate(1000,0)");
+    },
+
+    showUnits: function() {
+      column.sections.visible = false;
+      column.units.visible = true;
+
+      d3.select("#timescale").transition()
+        .duration(1000)
+        .attr("transform", "translate(0, 0)");
+
+      d3.select("#sectionContainer").select("svg").selectAll("g").transition()
+        .duration(1000)
+        .attr("transform", "translate(-1000,0)");
+
+      d3.select("#stratContainer").select("svg").selectAll("g").transition()
+        .duration(1000)
+        .attr("transform", "translate(0,0)");
+    }
+  }
 }
 
 
@@ -731,6 +748,8 @@ init
 
 zoom
   zoomIn
+    zoomInTimescale
+      displayLabelsIntervals
     zoomInSection
       displayLabelsSections
 
