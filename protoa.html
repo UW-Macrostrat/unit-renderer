@@ -251,6 +251,7 @@ function drawTimescale(data, type) {
     .style("fill", function(d) { return d.color })
     .call(drag)
     .on("click", function(d) {
+      if (d3.event.defaultPrevented) return;
       zoom.go(d.id);
     });
 
@@ -264,6 +265,7 @@ function drawTimescale(data, type) {
     .text(function(d) { return d.name; })
     .call(drag)
     .on("click", function(d) {
+      if (d3.event.defaultPrevented) return;
       zoom.go(d.id);
     });
 
@@ -323,6 +325,7 @@ function drawSections() {
     .style("fill", function(d) { return d.color })
     .call(drag)
     .on("click", function(d) {
+      if (d3.event.defaultPrevented) return;
       if (d.interval) {
         zoom.go(d.interval)
         adjust.graphic.swapViews();
@@ -457,6 +460,7 @@ function drawStrats() {
       .style("fill", function(d) { return d.color })
       .call(drag)
       .on("click", function(d) {
+        if (d3.event.defaultPrevented) return;
         console.log(d);
       })
 
