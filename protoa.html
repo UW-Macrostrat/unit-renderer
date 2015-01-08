@@ -37,11 +37,18 @@
   z-index: 1;
 }
 
+#oddities {
+  position: absolute;
+  left: 700px;
+  top: 0;
+}
+
 </style>
 <body>
   <div id="timescaleContainer"></div>
   <div id="stratContainer"></div>
   <div id="sectionContainer"></div>
+  <div id="oddities"><h4>These are wrong</h4></div>
 <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
 <script src="d3.v3.min.js"></script>
 <script>
@@ -353,6 +360,7 @@ function drawStrats() {
     section.units.forEach(function(d) {
       if (d.t_age > d.b_age) {
         console.log(d.strat_name + " IS BASS ACKWARDS");
+        d3.select("#oddities").append("p").html("<a href='http://macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         return;
       }
       var found = false;
