@@ -34,10 +34,6 @@
   margin-left: 5px;
 }
 
-#sectionContainer {
-  z-index: 1;
-}
-
 #oddities {
   position: absolute;
   left: 700px;
@@ -85,6 +81,36 @@ d3.select("body").on("contextmenu", function(d) {
   d3.event.preventDefault();
   adjust.graphic.swapViews();
 });
+
+var dragStart, transformStart,
+    newY = 0.01;
+
+var drag = d3.behavior.drag()
+  .origin(function() { 
+    var t = d3.select("#timescaleContainer g");
+    return {x: 0, y: -newY};
+  })
+  .on("dragstart", function() {
+    dragStart = [d3.event.sourceEvent.pageX, d3.event.sourceEvent.pageY];
+    transformStart = d3.transform(d3.select("#timescaleContainer").select("g").attr("transform")).translate;
+
+    d3.event.sourceEvent.stopPropagation();
+  })
+  .on("drag", function() {
+    var currentDrag = [d3.event.sourceEvent.pageX, d3.event.sourceEvent.pageY];
+    newY = (dragStart[1] - currentDrag[1]);
+
+    d3.select("#timescaleContainer").select("g")
+      .attr("transform", function() {
+        return "translate(" + [ 0, parseInt(transformStart[1] + -newY) ] + ")";
+      });
+
+    d3.selectAll("#sectionContainer, #stratContainer").selectAll(".crContainer")
+      .attr("transform", function() {
+        var currentY = d3.transform(d3.select(this).attr("transform")).translate[0];
+        return "translate(" + [ currentY, parseInt(transformStart[1] + -newY) ] + ")";
+      });
+  });
 
 var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
     units = {
@@ -202,6 +228,8 @@ function drawTimescale(data, type) {
       .attr("width", intervals.width)
       .attr("height", intervals.height)
       .append("g")
+        .attr("class", "crContainer")
+      .append("g")
         .attr("id", "timescale")
         .attr("data-zoomed", "false");
 
@@ -221,6 +249,7 @@ function drawTimescale(data, type) {
     .attr("width", intervals.width/4)
     .attr("height", function(d) { return units.scale(d.early_age) - units.scale(d.late_age)})
     .style("fill", function(d) { return d.color })
+    .call(drag)
     .on("click", function(d) {
       zoom.go(d.id);
     });
@@ -233,6 +262,7 @@ function drawTimescale(data, type) {
     .attr("dy", ".35em")
     .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; })
     .text(function(d) { return d.name; })
+    .call(drag)
     .on("click", function(d) {
       zoom.go(d.id);
     });
@@ -277,6 +307,8 @@ function drawSections() {
     .attr("width", units.width)
     .attr("height", units.height)
     .append("g")
+      .attr("class", "crContainer")
+    .append("g")
       .attr("id", "section");
 
   svg.selectAll(".sections")
@@ -289,6 +321,7 @@ function drawSections() {
     .attr("width", units.width)
     .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
     .style("fill", function(d) { return d.color })
+    .call(drag)
     .on("click", function(d) {
       if (d.interval) {
         zoom.go(d.interval)
@@ -300,7 +333,7 @@ function drawSections() {
     });
 
   d3.select("#sectionContainer")
-    .select("svg")
+    .select(".crContainer")
   .append("g")
     .attr("id", "unit_labels")
   .selectAll(".unit_label")
@@ -311,7 +344,8 @@ function drawSections() {
     .attr("dy", ".35em")
     .attr("transform", function(d) { return "translate(" +  (units.width/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
     .style("fill", function(d) { return d.text_color })
-    .text(function(d) { return d.strat_name; });
+    .text(function(d) { return d.strat_name; })
+    .call(drag);
   
   adjust.graphic.position();
   adjust.labels.sections();
@@ -326,6 +360,8 @@ function setupUnits() {
   d3.select("#stratContainer").append("svg")
     .attr("width", units.width)
     .attr("height", units.height)
+    .append("g")
+      .attr("class", "crContainer")
     .append("g")
       .attr("id", "section");
 
@@ -408,8 +444,7 @@ function drawStrats() {
     column.sectionLookup[section.id].columns = columns;
 
 
-    d3.select("#stratContainer")
-      .select("svg").select("g")
+    d3.select("#section")
     .selectAll(".units")
       .data(section.units)
     .enter().append("rect")
@@ -420,12 +455,13 @@ function drawStrats() {
       .attr("width", units.width/3)
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
       .style("fill", function(d) { return d.color })
+      .call(drag)
       .on("click", function(d) {
         console.log(d);
       })
 
     d3.select("#stratContainer")
-      .select("svg")
+      .select(".crContainer")
     .append("g")
       .attr("id", "unit_labels")
     .selectAll(".unit_label")
@@ -436,7 +472,8 @@ function drawStrats() {
       .attr("dy", ".35em")
       .attr("transform", function(d) { return "translate(" + (column_x_lookup[d.col] + (units.width/3)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
       .style("fill", function(d) { return d.text_color })
-      .text(function(d) { return d.strat_name; });
+      .text(function(d) { return d.strat_name; })
+      .call(drag);
     
     adjust.labels.units();
   });
@@ -463,9 +500,11 @@ var zoom = {
 
       var scaleY = units.height/(units.scale(d3.select("#n" + id).data()[0].early_age) - units.scale(d3.select("#n" + id).data()[0].late_age)),
           translate = units.scale(d3.select("#n" + id).data()[0].late_age) * scaleY;
-      console.log(scaleY)
+
       zoom.inn.go(scaleY, translate);
     }
+
+    d3.selectAll(".crContainer").attr("transform", "translate(0,0)");
    /* if (d3.select("#timescale").attr("data-zoomed") === "false") {
       
       var scaleY = units.height/d3.select("#n" + id).attr("height"),
@@ -721,9 +760,15 @@ var adjust = {
         .duration(1000)
         .attr("transform", "translate(0,0)");
 
+      d3.select("#sectionContainer")
+        .style("z-index", 1);
+
       d3.select("#stratContainer").select("svg").selectAll("g").transition()
         .duration(1000)
         .attr("transform", "translate(1000,0)");
+
+      d3.select("#stratContainer")
+        .style("z-index", 0);
     },
 
     showUnits: function() {
@@ -733,10 +778,16 @@ var adjust = {
       d3.select("#sectionContainer").select("svg").selectAll("g").transition()
         .duration(1000)
         .attr("transform", "translate(-1000,0)");
+      
+      d3.select("#sectionContainer")
+        .style("z-index", 0);
 
       d3.select("#stratContainer").select("svg").selectAll("g").transition()
         .duration(1000)
         .attr("transform", "translate(0,0)");
+       
+      d3.select("#stratContainer")
+        .style("z-index", 1);
     }
   }
 }
