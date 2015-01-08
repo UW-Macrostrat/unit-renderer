@@ -31,6 +31,7 @@
 
 #stratContainer, #sectionContainer {
   position: absolute;
+  margin-left: 5px;
 }
 
 #sectionContainer {
@@ -189,10 +190,10 @@ function drawTimescale(data, type) {
       max = d3.max(data, function(d) { return d.early_age});
   
   var interval_lookup = {
-      "era": -intervals.width * 0.3,
-      "period": 0,
-      "epoch": intervals.width * 0.3,
-      "age": intervals.width * 0.6
+      "era": 0,
+      "period": intervals.width * 0.25,
+      "epoch": intervals.width * 0.5,
+      "age": intervals.width * 0.75
     }
 
   d3.select("#timescaleContainer").select("svg").remove();
@@ -217,7 +218,7 @@ function drawTimescale(data, type) {
     .attr("id", function(d) { return "n" + d.id })
     .attr("x", function(d) { return interval_lookup[d.type] })
     .attr("y", function(d) { return units.scale(d.late_age) })
-    .attr("width", intervals.width * 0.3)
+    .attr("width", intervals.width/4)
     .attr("height", function(d) { return units.scale(d.early_age) - units.scale(d.late_age)})
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
@@ -444,7 +445,28 @@ function drawStrats() {
 
 var zoom = {
   go: function(id) {
-    if (d3.select("#timescale").attr("data-zoomed") === "false") {
+      
+    if (d3.select("#n" + id).attr("data-zoomed") === "true") {
+      d3.selectAll(".interval_node").filter(function() {
+        if (d3.select(this).attr("data-zoomed") === "true") {
+          d3.select(this).attr("data-zoomed", "false");
+        }
+      });
+      zoom.out.go();
+    } else {
+      d3.selectAll(".interval_node").filter(function() {
+        if (d3.select(this).attr("data-zoomed") === "true") {
+          d3.select(this).attr("data-zoomed", "false");
+        }
+      });
+      d3.select("#n" + id).attr("data-zoomed", "true");
+
+      var scaleY = units.height/(units.scale(d3.select("#n" + id).data()[0].early_age) - units.scale(d3.select("#n" + id).data()[0].late_age)),
+          translate = units.scale(d3.select("#n" + id).data()[0].late_age) * scaleY;
+      console.log(scaleY)
+      zoom.inn.go(scaleY, translate);
+    }
+   /* if (d3.select("#timescale").attr("data-zoomed") === "false") {
       
       var scaleY = units.height/d3.select("#n" + id).attr("height"),
           translate = d3.select("#n" + id).attr("y") * scaleY;
@@ -453,7 +475,7 @@ var zoom = {
 
     } else {
       zoom.out.go();
-    }
+    }*/
   },
   
   inn: {
@@ -477,7 +499,7 @@ var zoom = {
           return (units.scale(d.early_age) - units.scale(d.late_age)) * scaleF;
         })
         .attr("y", function(d) {
-          return (d3.select(this).attr("y") * scaleF) - translate;
+          return (units.scale(d.late_age) * scaleF) - translate;
         });
 
       setTimeout(adjust.labels.timescale, 1100);
@@ -488,12 +510,7 @@ var zoom = {
         .transition()
         .duration(1000)
         .each(function(){ ++n; })
-        .attr("transform", function(d) {
-          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-              x = currentTransform[0],
-              y = currentTransform[1];
-          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")rotate(-90)" 
-        })
+        .attr("transform", function(d) { return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((((units.scale(d.late_age) + units.scale(d.early_age))/2) * scaleF) - translate) + ")rotate(-90)"; })
         .each("end", function() { if (!--n) { adjust.labels.timescale() }});
     },
 
@@ -505,7 +522,7 @@ var zoom = {
           return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
         })
         .attr("y", function(d) { 
-          return (d3.select(this).attr("y") * scaleF) - translate;
+          return (units.scale(d.t_age) * scaleF) - translate;
         });
 
       var n = 0;
@@ -514,11 +531,9 @@ var zoom = {
         .transition()
         .duration(1000)
         .each(function(){ ++n; })
-        .attr("transform", function(d) {
-          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-              x = currentTransform[0],
-              y = currentTransform[1];
-          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
+        .attr("transform", function(d) { 
+          var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
+          return "translate(" +  (units.width/2)  + "," + ((origY * scaleF) - translate)  + ")" 
         })
         .each("end", function() { if (!--n) { adjust.labels.sections() }});
     },
@@ -531,7 +546,7 @@ var zoom = {
           return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
         })
         .attr("y", function(d) { 
-          return (d3.select(this).attr("y") * scaleF) - translate;
+          return (units.scale(d.t_age)  * scaleF) - translate;
         });
 
       var n = 0;
@@ -540,11 +555,9 @@ var zoom = {
         .transition()
         .duration(1000)
         .each(function(){ ++n; })
-        .attr("transform", function(d) {
-          var currentTransform = d3.transform(d3.select(this).attr("transform")).translate,
-              x = currentTransform[0],
-              y = currentTransform[1];
-          return "translate(" + x  + "," + ((y * scaleF) - translate) + ")" 
+        .attr("transform", function(d) { 
+          var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
+          return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/3)/2)  + "," + ((origY * scaleF) - translate) + ")" 
         })
         .each("end", function() { if (!--n) { adjust.labels.units() }});
     }
@@ -704,10 +717,6 @@ var adjust = {
       column.sections.visible = true;
       column.units.visible = false;
 
-      d3.select("#timescale").transition()
-        .duration(1000)
-        .attr("transform", "translate(20, 0)");
-
       d3.select("#sectionContainer").select("svg").selectAll("g").transition()
         .duration(1000)
         .attr("transform", "translate(0,0)");
@@ -720,10 +729,6 @@ var adjust = {
     showUnits: function() {
       column.sections.visible = false;
       column.units.visible = true;
-
-      d3.select("#timescale").transition()
-        .duration(1000)
-        .attr("transform", "translate(0, 0)");
 
       d3.select("#sectionContainer").select("svg").selectAll("g").transition()
         .duration(1000)
