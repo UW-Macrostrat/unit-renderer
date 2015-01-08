@@ -53,6 +53,9 @@
 <script src="d3.v3.min.js"></script>
 <script>
 /*
+
+Check column 324 for rendering on top or lateral
+
   1. Check if a section or column is requested
     1a. If section, /api/units?section_id=? and get data.success.data[0].col_id
     1b. If column, continue on
@@ -84,7 +87,7 @@ d3.select("body").on("contextmenu", function(d) {
 
 var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
     units = {
-      width: 600,
+      width: 300,
       height: 800
     },
     intervals = {
@@ -151,7 +154,7 @@ function getColumnSections(col_id) {
         "id": d.id,
         "b_age": d.bottom_age,
         "t_age": d.top_age,
-        "strat_name": d.top + "-" + d.bottom,
+        "strat_name": d.bottom + "-" + d.top,
         "col": col_id,
         "color": "#777777"
       }
@@ -201,10 +204,9 @@ function drawTimescale(data, type) {
         .attr("id", "timescale")
         .attr("data-zoomed", "false");
 
-  var scale = d3.scale.linear()
+  /*var scale = d3.scale.linear()
       .domain([min, max])
-      .range([0, intervals.height])
-
+      .range([0, intervals.height])*/
     
   intervals.interval_lookup = interval_lookup;
 
@@ -214,9 +216,9 @@ function drawTimescale(data, type) {
     .attr("class", "node interval_node")
     .attr("id", function(d) { return "n" + d.id })
     .attr("x", function(d) { return interval_lookup[d.type] })
-    .attr("y", function(d) { return scale(d.late_age) })
+    .attr("y", function(d) { return units.scale(d.late_age) })
     .attr("width", intervals.width * 0.3)
-    .attr("height", function(d) { return scale(d.early_age) - scale(d.late_age)})
+    .attr("height", function(d) { return units.scale(d.early_age) - units.scale(d.late_age)})
     .style("fill", function(d) { return d.color })
     .on("click", function(d) {
       zoom.go(d.id);
@@ -228,7 +230,7 @@ function drawTimescale(data, type) {
     .attr("class", "label interval_label")
     .attr("id", function(d) { return "nl" + d.id })
     .attr("dy", ".35em")
-    .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((scale(d.late_age) + scale(d.early_age))/2) + ")rotate(-90)"; })
+    .attr("transform", function(d) { return "translate(" + (interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; })
     .text(function(d) { return d.name; })
     .on("click", function(d) {
       zoom.go(d.id);
@@ -397,12 +399,13 @@ function drawStrats() {
 
     var column_x_lookup = {
         0: 0,
-        1: units.width/columns.length,
-        2: units.width/columns.length + units.width/columns.length
+        1: units.width/3,
+        2: units.width*1.5
       }
 
     column.sectionLookup[section.id].column_x_lookup = column_x_lookup;
     column.sectionLookup[section.id].columns = columns;
+
 
     d3.select("#stratContainer")
       .select("svg").select("g")
@@ -413,7 +416,7 @@ function drawStrats() {
       .attr("id", function(d) { return "u" + d.id })
       .attr("x", function(d) { return column_x_lookup[d.col] })
       .attr("y", function(d) { return units.scale(d.t_age) })
-      .attr("width", units.width/columns.length)
+      .attr("width", units.width/3)
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
       .style("fill", function(d) { return d.color })
       .on("click", function(d) {
@@ -430,7 +433,7 @@ function drawStrats() {
       .attr("class", "label unit_label")
       .attr("id", function(d) { return "ul" + d.id })
       .attr("dy", ".35em")
-      .attr("transform", function(d) { return "translate(" + (column_x_lookup[d.col] + (units.width/columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+      .attr("transform", function(d) { return "translate(" + (column_x_lookup[d.col] + (units.width/3)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
       .style("fill", function(d) { return d.text_color })
       .text(function(d) { return d.strat_name; });
     
@@ -612,7 +615,7 @@ var zoom = {
         .transition()
         .duration(1000)
         .each(function(){ ++n; })
-        .attr("transform", function(d) { return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/column.sectionLookup[d.section_id].columns.length)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+        .attr("transform", function(d) { return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/3)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
         .each("end", function() { if (!--n) { adjust.labels.units() }});
     }
   }
