@@ -166,6 +166,8 @@ function getColumnUnits(col_id) {
       return alert("Couldn't find column " + col_id + " while retrieving units");
     }
     column.units = data.success.data;
+
+    column.units.sort(function(a, b) { return a.t_age - b.t_age });
   });
 }
 
@@ -395,10 +397,63 @@ function drawStrats() {
   column.sections.forEach(function(section) {
     var columns = [
       {
-        'top': -1,
-        'bottom': -1
+        "top": -1,
+        "bottom": -1,
+        "units": []
+      },
+      {
+        "top": -1,
+        "bottom": -1,
+        "units": []
+      },
+      {
+        "top": -1,
+        "bottom": -1,
+        "units": []
+      }
+      ,
+      {
+        "top": -1,
+        "bottom": -1,
+        "units": []
       }
     ];
+
+    section.units.forEach(function(d, i) {
+      if (d.units_below.length === 1 && d.units_above.indexOf(0) > -1) {
+        for (var z = 0; z < columns.length; z++) {
+          if (columns[z].units.length < 1) {
+            columns[z].units.push(d.units_below[0]);
+            break;
+          }
+        }
+
+      } else {
+        // Find which column this unit is in
+        var idx = -1;
+        columns.forEach(function(j, k) {
+          if (j.units.indexOf(d.id) > -1) {
+            idx = k;
+          }
+        });
+
+        // if units_below.length === 1, add it's unit_below to the same column
+        if (d.units_below.length === 1 && columns[idx].units.indexOf(d.id) < 0) {
+          columns[idx].units.push(d.id)
+        
+        // else if units.below.length > 1, add one unit_below to each column
+        } else {
+
+          d.units_below.forEach(function(j,k) {
+            if (columns[k].units.indexOf(j.id) < 0) {
+              columns[k].units.push(j);
+            }
+            
+          });
+        }
+        
+      }
+    });
     section.units.forEach(function(d) {
       if (d.t_age > d.b_age) {
         console.log(d.strat_name + " IS BASS ACKWARDS");
@@ -407,17 +462,9 @@ function drawStrats() {
       }
       var found = false;
       for (var i=0; i<columns.length; i++) {
-        if (d.t_age >= columns[i].top && d.b_age <= columns[i].bottom) {
-          // add new column
-         // console.log("a - " + d.strat_name)
-        } else if (d.t_age < columns[i].top && d.b_age > columns[i].top) {
-          // add new column
-          //console.log("b - " + d.strat_name)
-        } else if (d.t_age < columns[i].bottom && d.t_age > columns[i].top) {
-          // add new column
-          //console.log("c - " + d.strat_name)
+        if (d.b_age > columns[i].top && columns[i].bottom > d.t_age) {
+          // Overlap - Add a new column
         } else {
-         // console.log("d - " + d.strat_name)
           if (columns[i].top < 0) {
             columns[i].top = d.t_age;
           }
@@ -427,8 +474,8 @@ function drawStrats() {
           d.col = i;
           return;
         }
-      }
 
+      }
 
       if (!found) {
         columns.push({'top': d.t_age, 'bottom': d.b_age});
@@ -436,7 +483,22 @@ function drawStrats() {
       }
 
     });
-
+    
+    section.units.forEach(function(d) {
+      d.overlaps = 0;
+      section.units.forEach(function(j) {
+        if (d.id !== j.id) {
+          if (d.b_age > j.t_age && j.b_age > d.t_age) {
+            d.overlaps++
+          }
+        }
+      });
+    });
+if (section.id == 4252) {
+    console.log(section.units)
+    console.log(columns);
+}
+    
     var column_x_lookup = {
         0: 0,
         1: units.width/3,
@@ -455,7 +517,14 @@ function drawStrats() {
       .attr("id", function(d) { return "u" + d.id })
       .attr("x", function(d) { return column_x_lookup[d.col] })
       .attr("y", function(d) { return units.scale(d.t_age) })
-      .attr("width", units.width/3)
+      //.attr("width", units.width/3)
+      .attr("width", function(d) {
+        if (d.overlaps < 1) {
+          return (units.width/3) + (units.width/3);
+        } else {
+          return units.width/3;
+        }
+      })
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
       .style("fill", function(d) { return d.color })
       .call(drag)
