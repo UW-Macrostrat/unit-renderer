@@ -5,6 +5,7 @@
 
 .node {
   fill: #ddd;
+  fill-opacity: 0.7;
   stroke: #000;
   stroke-width: 0.01em;
 }
@@ -48,6 +49,7 @@
   <div id="oddities"><h4>These are wrong</h4></div>
 <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
 <script src="d3.v3.min.js"></script>
+<script src="underscore.min.js"></script>
 <script>
 /*
 
@@ -75,7 +77,11 @@ Check column 324 for rendering on top or lateral
 
   INSERT INTO timescales_intervals (timescale_id, interval_id)  SELECT 11, id FROM `intervals` WHERE interval_type='era'
 */
-
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
 // Temporary way to toggle between unit and section view
 d3.select("body").on("contextmenu", function(d) {
   d3.event.preventDefault();
@@ -300,7 +306,7 @@ function drawSections() {
     if (containingIntervals.length > 0) {
       d.interval = containingIntervals[0].id
     } else {
-      console.log("Problem with section " + d.id);
+     // console.log("Problem with section " + d.id);
     }
   });
 
@@ -400,19 +406,15 @@ function drawStrats() {
         "top": -1,
         "bottom": -1,
         "units": []
-      },
-      {
+      }, {
         "top": -1,
         "bottom": -1,
         "units": []
-      },
-      {
+      }, {
         "top": -1,
         "bottom": -1,
         "units": []
-      }
-      ,
-      {
+      }, {
         "top": -1,
         "bottom": -1,
         "units": []
@@ -420,19 +422,19 @@ function drawStrats() {
     ];
 
     section.units.forEach(function(d, i) {
-      if (d.units_below.length === 1 && d.units_above.indexOf(0) > -1) {
-        for (var z = 0; z < columns.length; z++) {
-          if (columns[z].units.length < 1) {
-            columns[z].units.push(d.units_below[0]);
-            break;
+      // If this is the first unit in a section...
+      if (d.units_above.length === 1 && d.units_above.indexOf(0) > -1) {
+        d.units_below.forEach(function(unit_below, p) {
+          if (columns[p].units.indexOf(unit_below) < 0) {
+            columns[p].units.push(unit_below);
           }
-        }
-
+        });
       } else {
-        // Find which column this unit is in
+        // If it's not the first unit in a section, its unit_id should already be in a "column"
+        // Find which "column" this unit is in
         var idx = -1;
-        columns.forEach(function(j, k) {
-          if (j.units.indexOf(d.id) > -1) {
+        columns.forEach(function(column, k) {
+          if (column.units.indexOf(d.id) > -1) {
             idx = k;
           }
         });
@@ -454,9 +456,37 @@ function drawStrats() {
         
       }
     });
+
+/* 
+  Need to figure out which column each unit is in!
+  
+
+  I'm not sure the below code is needed anymore..
+*/  
+    var remove = [];
+    columns.forEach(function(r,g) {
+      if (r.units.length < 1) {
+        remove.push(g);
+      }
+    });
+
+    remove.forEach(function(r) {
+      columns.splice(r, 1);
+    });
+
+    // Record the column(s) of each unit
+    section.units.forEach(function(unit) {
+      unit.belongsToColumns = [];
+      columns.forEach(function(column, columnIndex) {
+        if (column.units.indexOf(unit.id) > -1) {
+          unit.belongsToColumns.push(columnIndex);
+        }
+      });
+    });
+
     section.units.forEach(function(d) {
       if (d.t_age > d.b_age) {
-        console.log(d.strat_name + " IS BASS ACKWARDS");
+        //console.log(d.strat_name + " IS BASS ACKWARDS");
         d3.select("#oddities").append("p").html("<a href='http://macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         return;
       }
@@ -485,16 +515,22 @@ function drawStrats() {
     });
     
     section.units.forEach(function(d) {
-      d.overlaps = 0;
+      d.overlaps = [];
       section.units.forEach(function(j) {
         if (d.id !== j.id) {
           if (d.b_age > j.t_age && j.b_age > d.t_age) {
-            d.overlaps++
+            d.overlaps.push(j.id);
           }
         }
       });
     });
-if (section.id == 4252) {
+
+    section.units.forEach(function(d) {
+      var olContacts1 = _.intersection(d.overlaps, d.units_below),
+          olContacts2 = _.intersection(d.overlaps, d.units_above);
+      d.overlappingContacts = _.union(olContacts1, olContacts2)
+    });
+if (section.id == 4144) {
     console.log(section.units)
     console.log(columns);
 }
@@ -502,24 +538,34 @@ if (section.id == 4252) {
     var column_x_lookup = {
         0: 0,
         1: units.width/3,
-        2: units.width*1.5
+        2: units.width*1.5,
+        3: units.width*0.75
       }
 
     column.sectionLookup[section.id].column_x_lookup = column_x_lookup;
     column.sectionLookup[section.id].columns = columns;
 
-
+    var data = section.units.filter(function(d) {
+      if (d.b_age > d.t_age) {
+        return d;
+      }
+    });
     d3.select("#section")
     .selectAll(".units")
-      .data(section.units)
+      .data(data)
     .enter().append("rect")
       .attr("class", "node unit_node")
       .attr("id", function(d) { return "u" + d.id })
-      .attr("x", function(d) { return column_x_lookup[d.col] })
+      .attr("x", function(d) { 
+        if (d.overlappingContacts.length > 0) {
+          return 0;
+        }
+        return column_x_lookup[d.col] 
+      })
       .attr("y", function(d) { return units.scale(d.t_age) })
-      //.attr("width", units.width/3)
+
       .attr("width", function(d) {
-        if (d.overlaps < 1) {
+        if (d.units_below.length > 1 || d.overlaps.length < 1) {
           return (units.width/3) + (units.width/3);
         } else {
           return units.width/3;
@@ -538,7 +584,7 @@ if (section.id == 4252) {
     .append("g")
       .attr("id", "unit_labels")
     .selectAll(".unit_label")
-      .data(section.units)
+      .data(data)
     .enter().append("text")
       .attr("class", "label unit_label")
       .attr("id", function(d) { return "ul" + d.id })
@@ -549,6 +595,7 @@ if (section.id == 4252) {
       .call(drag);
     
     adjust.labels.units();
+    adjust.units.zIndex();
   });
 }
 
@@ -862,6 +909,37 @@ var adjust = {
       d3.select("#stratContainer")
         .style("z-index", 1);
     }
+  },
+
+  units: {
+    zIndex: function() {
+      d3.selectAll(".unit_node").each(function(d) {
+        var y = d3.select(this).attr("y")
+        var sameY = d3.selectAll(".unit_node").filter(function(j) {
+          if (d3.select(this).attr("y") === y) {
+            return this;
+          }
+        });
+
+        if (sameY[0].length > 1) {
+          var minTop = d3.min(sameY[0], function(x) {
+            return x.__data__.t_age;
+          });
+          var maxBottom = d3.max(sameY[0], function(x) {
+            return x.__data__.b_age;
+          });
+
+          sameY[0].forEach(function(j) {
+            if (j.__data__.t_age > minTop) {
+              d3.select(j).moveToFront()
+            }
+            if (j.__data__.b_age < maxBottom) {
+              d3.select(j).moveToFront()
+            }
+          })
+        }
+      });
+    }
   }
 }
 
@@ -901,6 +979,8 @@ zoom
       displayLabelsUnits
 
 */
+
+
 
 </script>
 
