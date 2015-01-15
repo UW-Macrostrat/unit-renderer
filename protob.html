@@ -48,7 +48,7 @@
   <div id="sectionContainer"></div>
   <div id="oddities">
     <button>Swap Views</button>
-    <h4>These are wrong</h4></div>
+    <h4>These are wrong (and not drawn)</h4></div>
 <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
 <script src="d3.v3.min.js"></script>
 <script src="underscore.min.js"></script>
@@ -453,6 +453,8 @@ function drawStrats() {
 
     var widthUnit = units.width/parsed.columns.length;
 
+    column.sectionLookup[section.id].widthUnit = widthUnit;
+
     d3.select("#section")
     .selectAll(".units")
       .data(data)
@@ -466,7 +468,7 @@ function drawStrats() {
       .attr("y", function(d) { return units.scale(d.t_age) })
       .attr("width", function(d) {
         // Let width be definied by d.cols
-        return (d.cols) ? d.cols * widthUnit : widthUnit/2;
+        return (d.cols) ? d.cols * widthUnit : units.width/2;
       })
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
       .style("fill", function(d) { return d.color })
@@ -488,44 +490,21 @@ function drawStrats() {
       .attr("id", function(d) { return "ul" + d.id })
       .attr("dy", ".35em")
       .attr("transform", function(d) { 
-        var x = (d.firstCol * widthUnit) + ((d.cols * widthUnit)/2),
-            y = (units.scale(d.t_age)) + (units.scale(d.b_age)/2)
+        var x = parseFloat(d3.select("#u" + d.id).attr("x")),
+            width = parseFloat(d3.select("#u" + d.id).attr("width")),
+            y = parseFloat(d3.select("#u" + d.id).attr("y")),
+            height = parseFloat(d3.select("#u" + d.id).attr("height"));
 
-        return "translate(" + x  + "," + y+ ")" 
+        var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
+
+        x = x + (width/2);
+        y = y + (height/2);
+
+        return "translate(" + x  + "," + y + ")" 
       })
       .style("fill", function(d) { return d.text_color })
       .text(function(d) { return d.strat_name; })
       .call(drag);
-
- /*   d3.select("#stratContainer")
-      .select(".crContainer")
-      .append("g")
-        .attr("id", "unit_labels")
-          .attr("transform", "translate(-50,0)")
-    .selectAll(".unit_label")
-      .data(data)
-      .enter().append("g")
-        .attr("class", "label unit_label")
-        .attr("id", function(d) { return "ul" + d.id })
-        .attr("transform", function(d) { 
-          var x;
-          if (d.units_below.length > 1 || d.overlaps.length < 1) {
-            x = (column_x_lookup[d.col] + (units.width/1.5)/2)
-          } else {
-            x = (column_x_lookup[d.col] + (units.width/3)/2);
-          }
-          var y = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
-
-          return "translate(" + x  + "," + y+ ")" 
-        })
-      .append("foreignObject")
-      .attr("width", "100px")
-      .attr("height", "50px")
-      .append("xhtml:div")
-      .html(function(d) {
-        return d.strat_name
-      });
-*/
     
     adjust.labels.units();
     adjust.units.zIndex();
@@ -726,7 +705,19 @@ var zoom = {
         .transition()
         .duration(1000)
         .each(function(){ ++n; })
-        .attr("transform", function(d) { return "translate(" + (column.sectionLookup[d.section_id].column_x_lookup[d.col] + (units.width/3)/2)  + "," + (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2) + ")" })
+        .attr("transform", function(d) {
+          var x = parseFloat(d3.select("#u" + d.id).attr("x")),
+              width = parseFloat(d3.select("#u" + d.id).attr("width")),
+              y = parseFloat(d3.select("#u" + d.id).attr("y")),
+              height = parseFloat(d3.select("#u" + d.id).attr("height"));
+
+          var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
+
+           var x = x + (width/2),
+               y = y + (height/2)
+
+            return "translate(" + x  + "," + y + ")" 
+        })
         .each("end", function() { if (!--n) { adjust.labels.units() }});
 
     }
@@ -801,7 +792,6 @@ var adjust = {
         var section = chunk.replace("section=", "");
         column.sections.forEach(function(d) {
           if (d.id == section) {
-            console.log(d);
             zoom.go(d.interval);
           }
         });
@@ -869,7 +859,7 @@ var adjust = {
         if (d.putOnTop) {
           d3.select(this).moveToFront();
         }
-        
+
         var y = d3.select(this).attr("y")
         var sameY = d3.selectAll(".unit_node").filter(function(j) {
           if (d3.select(this).attr("y") === y) {
