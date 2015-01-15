@@ -197,11 +197,13 @@ function getDrawingColumns(units) {
         if (top === unitHash[above].t_age && bot < unitHash[above].b_age ) {
           d.within = true;
           d.withinUnit = above;
+          unitHash[above].containsUnit = d.id;
         }
 
         if (bot === unitHash[above].b_age && top > unitHash[above].t_age) {
           d.within = true;
           d.withinUnit = above;
+          unitHash[above].containsUnit = d.id;
         }
       }
 
@@ -219,11 +221,13 @@ function getDrawingColumns(units) {
         if (top === unitHash[below].t_age && bot < unitHash[below].b_age ) {
           d.within = true;
           d.withinUnit = below;
+          unitHash[below].containsUnit = d.id;
         }
 
         if (bot === unitHash[below].b_age && top > unitHash[below].t_age) {
           d.within = true;
           d.withinUnit = below;
+          unitHash[below].containsUnit = d.id;
         }
       }
 

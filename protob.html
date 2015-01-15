@@ -503,7 +503,7 @@ function drawStrats() {
 
         var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
 
-        x = x + (width/2);
+        x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
         y = y + (height/2);
 
         return "translate(" + x  + "," + y + ")" 
@@ -633,11 +633,13 @@ var zoom = {
         .duration(1000)
         .each(function() { ++n; })
         .attr("transform", function(d) { 
-          var x = parseInt(d3.select("#u" + d.id).attr("x")) + (parseInt(d3.select("#u" + d.id).attr("width"))/2);
+          var x = parseFloat(d3.select("#u" + d.id).attr("x")),
+              width = parseFloat(d3.select("#u" + d.id).attr("width"))
 
-          if (d.overlappingContacts >=1 ) {
-            x += 50
-          }
+          var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
+
+          x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
+
 
           var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
           return "translate(" + x + "," + ((origY * scaleF) - translate) + ")" 
@@ -719,7 +721,7 @@ var zoom = {
 
           var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
 
-           var x = x + (width/2),
+           var x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2),
                y = y + (height/2)
 
             return "translate(" + x  + "," + y + ")" 
