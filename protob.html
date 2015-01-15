@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<title>Macrostrat section renderer</title>
+<title>Macrostrat column renderer</title>
 <style>
 
 .node {
@@ -73,10 +73,8 @@ Check column 324 for rendering on top or lateral
     9b. If column, hide units
 */
 /*
-  1. Create Member-group-unit hierarchy, where applicable
   4. Texture units based on 'lith'
   5. Handle text display properly
-  4. Scrollable?
 
   INSERT INTO timescales_intervals (timescale_id, interval_id)  SELECT 11, id FROM `intervals` WHERE interval_type='era'
 */
@@ -130,11 +128,10 @@ var baseURL = (window.location.hostname === "localhost") ? "http://localhost:500
       width: 50,
       height: 800
     },
-    column = {
-
-    }
+    column = {}
 
 function init() {
+  // THIS IS A PLACEHOLDER
   var chunk = window.location.hash.replace("#/", "");
 
   if (chunk.indexOf("section=") > -1) {
@@ -198,6 +195,21 @@ function getColumnSections(col_id) {
       }
     });;
 
+    //!!!!! Temporary code !!!!!!
+    column.sections.forEach(function(section1) {
+      column.sections.forEach(function(section2) {
+        if (section1.id !== section2.id) {
+          if (section1.b_age > section2.t_age && section2.b_age > section1.t_age) {
+            section1.invalid = true;
+            section2.invalid = true;
+          }
+        }
+      });
+    });
+
+  // !!!!!!!!!!!!!
+
+
     getTimescaleData();
 
   });
@@ -233,6 +245,8 @@ function drawTimescale(data, type) {
       "age": intervals.width * 0.75
     }
 
+  intervals.interval_lookup = interval_lookup;
+
   d3.select("#timescaleContainer").select("svg").remove();
 
   var svg = d3.select("#timescaleContainer").append("svg")
@@ -244,8 +258,6 @@ function drawTimescale(data, type) {
         .attr("id", "timescale")
         .attr("data-zoomed", "false");
     
-  intervals.interval_lookup = interval_lookup;
-
   svg.selectAll(".node")
     .data(data)
   .enter().append("rect")
@@ -289,19 +301,24 @@ function drawSections() {
     "age": 3
   }
 
+  // This tells us which time interval to zoom to when a section is clickec
   column.sections.forEach(function(d) {
     var containingIntervals = [];
+    // Find all the ones that fit
     column.intervals.forEach(function(j) {
       if (j.late_age <= d.t_age && j.early_age >= d.b_age) {
         containingIntervals.push(j);
       }
     });
 
+    // Sort by rank
     containingIntervals.forEach(function(d) {
       d.rank = intervalRanks[d.type];
     });
+
     containingIntervals.sort(function(a, b) { return b.rank - a.rank });
 
+    // Pick the finest one
     if (containingIntervals.length > 0) {
       d.interval = containingIntervals[0].id
     } else {
@@ -312,6 +329,12 @@ function drawSections() {
   // Remove any old ones
   d3.select("#sectionContainer").select("svg").remove();
 
+// !!!!!!!!! Temporary code
+  var data = column.sections.filter(function(section){
+    if (!section.invalid) return section
+  });
+// !!!!!!!!!!!!
+
   var svg = d3.select("#sectionContainer").append("svg")
     .attr("width", units.width)
     .attr("height", units.height)
@@ -321,7 +344,7 @@ function drawSections() {
       .attr("id", "section");
 
   svg.selectAll(".sections")
-    .data(column.sections)
+    .data(data)
   .enter().append("rect")
     .attr("class", "node section_node")
     .attr("id", function(d) { return "s" + d.id })
@@ -336,7 +359,6 @@ function drawSections() {
       if (d.interval) {
         zoom.go(d.interval)
         adjust.graphic.swapViews();
-        console.log(d);
       } else {
         adjust.graphic.swapViews();
       }
@@ -347,7 +369,7 @@ function drawSections() {
   .append("g")
     .attr("id", "unit_labels")
   .selectAll(".unit_label")
-    .data(column.sections)
+    .data(data)
   .enter().append("text")
     .attr("class", "label unit_label_section")
     .attr("id", function(d) { return "sl" + d.id })
@@ -375,6 +397,7 @@ function setupUnits() {
     .append("g")
       .attr("id", "section");
 
+  // A convinience for looking up units and sections
   var sectionLookup = {},
       sectionLookup2 = {};
 
@@ -401,12 +424,27 @@ function setupUnits() {
 
 function drawStrats() {
   column.sections.forEach(function(section) {
+
+ //!!!!!! Temporary code
+    if (section.invalid) {
+      d3.select("#oddities").append("p").html("Section " + section.id + " overlaps with another section");
+      return;
+    }
+// !!!!!!!
     
-    // Get drawing columns - returns {"columns": columns, "units": units}
+    /* Get drawing columns (function imported from getDrawingColumns.js)
+        returns {"columns": columns, "units": units}
+    */
     var parsed = getDrawingColumns(section.units);
 
+    // The width (px) of one "column" in a section
+    var widthUnit = units.width/parsed.columns.length;
+
+    // Keep track of these for use during transitions
     section.units = parsed.units;
-  
+    column.sectionLookup[section.id].columns = parsed.columns;
+    column.sectionLookup[section.id].widthUnit = widthUnit;
+
     /*
       Record the first column appearance of each unit (`d.firstCol`) and
       the total number of column appearances of each unit (`d.cols`)
@@ -427,14 +465,10 @@ function drawStrats() {
     // Find the bad ones
     section.units.forEach(function(d) {
       if (d.t_age > d.b_age) {
-        d3.select("#oddities").append("p").html("<a href='http://macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+        d3.select("#oddities").append("p").html("<a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         return;
       }
     });
-
-
-   // column.sectionLookup[section.id].column_x_lookup = column_x_lookup;
-    column.sectionLookup[section.id].columns = parsed.columns;
 
     // Ignore the bad ones
     var data = section.units.filter(function(d) {
@@ -443,13 +477,10 @@ function drawStrats() {
       }
     });
 
+    // Add the units that are entirely surrounded by another unit to the drawing data
     parsed.inside.forEach(function(n) {
       data.push(JSON.parse(n));
     });
-
-    var widthUnit = units.width/parsed.columns.length;
-
-    column.sectionLookup[section.id].widthUnit = widthUnit;
 
     d3.select("#section")
     .selectAll(".units")
@@ -457,14 +488,16 @@ function drawStrats() {
     .enter().append("rect")
       .attr("class", "node unit_node")
       .attr("id", function(d) { return "u" + d.id })
+      .attr("y", function(d) { return units.scale(d.t_age) })
+      .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
+      .style("fill", function(d) { return d.color })
       .attr("x", function(d) {
+        // Let x be defined by d.firstCol
         if (d.within) {
           return parsed.unitHash[d.withinUnit].firstCol * widthUnit;
         }
-        // Let x be defined by d.firstCol
         return (d.firstCol) ? d.firstCol * widthUnit : 0;
       })
-      .attr("y", function(d) { return units.scale(d.t_age) })
       .attr("width", function(d) {
         // Let width be definied by d.cols
         if (d.within) {
@@ -472,8 +505,6 @@ function drawStrats() {
         }
         return (d.cols) ? d.cols * widthUnit : units.width/2;
       })
-      .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
-      .style("fill", function(d) { return d.color })
       .call(drag)
       .on("click", function(d) {
         if (d3.event.defaultPrevented) return;
@@ -491,20 +522,19 @@ function drawStrats() {
       .attr("class", "label unit_label")
       .attr("id", function(d) { return "ul" + d.id })
       .attr("dy", ".35em")
+      .style("fill", function(d) { return d.text_color })
       .attr("transform", function(d) { 
         var x = parseFloat(d3.select("#u" + d.id).attr("x")),
             width = parseFloat(d3.select("#u" + d.id).attr("width")),
             y = parseFloat(d3.select("#u" + d.id).attr("y")),
             height = parseFloat(d3.select("#u" + d.id).attr("height"));
 
-        var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
-
         x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
         y = y + (height/2);
 
         return "translate(" + x  + "," + y + ")" 
       })
-      .style("fill", function(d) { return d.text_color })
+      
       .text(function(d) { return d.strat_name; })
       .call(drag);
     
@@ -537,8 +567,6 @@ var zoom = {
 
       zoom.inn.go(scaleY, translate);
     }
-
-    d3.selectAll(".crContainer").attr("transform", "translate(0,0)");
 
   },
   
@@ -620,15 +648,12 @@ var zoom = {
         .duration(1000)
         .each(function() { ++n; })
         .attr("transform", function(d) { 
-          var x = parseFloat(d3.select("#u" + d.id).attr("x")),
-              width = parseFloat(d3.select("#u" + d.id).attr("width"))
-
-          var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
+          var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2),
+              x = parseFloat(d3.select("#u" + d.id).attr("x")),
+              width = parseFloat(d3.select("#u" + d.id).attr("width"));
 
           x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
 
-
-          var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
           return "translate(" + x + "," + ((origY * scaleF) - translate) + ")" 
         })
         .each("end", function() { if (!--n) { adjust.labels.units() }});
@@ -705,8 +730,6 @@ var zoom = {
               width = parseFloat(d3.select("#u" + d.id).attr("width")),
               y = parseFloat(d3.select("#u" + d.id).attr("y")),
               height = parseFloat(d3.select("#u" + d.id).attr("height"));
-
-          var widthUnit =  column.sectionLookup[d.section_id].widthUnit;
 
            var x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2),
                y = y + (height/2)
