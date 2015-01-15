@@ -2,6 +2,7 @@
 Given a macrostrat column, produce a reasonable representation
 
 ### General function flow
+````
 init
   (findSectionColumn)
   getStrats
@@ -53,3 +54,4 @@ zoom
         adjust.labels.sections
       out.units
         adjust.labels.units
+````
