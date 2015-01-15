@@ -193,6 +193,16 @@ function getDrawingColumns(units) {
           // within
           d.putOnTop = true;
         }
+
+        if (top === unitHash[above].t_age && bot < unitHash[above].b_age ) {
+          d.within = true;
+          d.withinUnit = above;
+        }
+
+        if (bot === unitHash[above].b_age && top > unitHash[above].t_age) {
+          d.within = true;
+          d.withinUnit = above;
+        }
       }
 
       if (below !== 0) {
@@ -205,6 +215,16 @@ function getDrawingColumns(units) {
           // within
           d.putOnTop = true;
         }
+
+        if (top === unitHash[below].t_age && bot < unitHash[below].b_age ) {
+          d.within = true;
+          d.withinUnit = below;
+        }
+
+        if (bot === unitHash[below].b_age && top > unitHash[below].t_age) {
+          d.within = true;
+          d.withinUnit = below;
+        }
       }
 
     }
@@ -215,7 +235,8 @@ function getDrawingColumns(units) {
    return {
       "columns": columns,
       "units": units,
-      "inside": inside
+      "inside": inside,
+      "unitHash": unitHash
     }
   
 }

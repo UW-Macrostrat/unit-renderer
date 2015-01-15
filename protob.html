@@ -461,13 +461,19 @@ function drawStrats() {
     .enter().append("rect")
       .attr("class", "node unit_node")
       .attr("id", function(d) { return "u" + d.id })
-      .attr("x", function(d) { 
+      .attr("x", function(d) {
+        if (d.within) {
+          return parsed.unitHash[d.withinUnit].firstCol * widthUnit;
+        }
         // Let x be defined by d.firstCol
         return (d.firstCol) ? d.firstCol * widthUnit : 0;
       })
       .attr("y", function(d) { return units.scale(d.t_age) })
       .attr("width", function(d) {
         // Let width be definied by d.cols
+        if (d.within) {
+          return units.width/2;
+        }
         return (d.cols) ? d.cols * widthUnit : units.width/2;
       })
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
@@ -874,7 +880,9 @@ var adjust = {
           sameY[0].forEach(function(j) {
             heights.push(d3.select(j).attr("height"));
           });
+
           var uniqHeights = _.uniq(heights);
+
           if (uniqHeights.length === 1) {
 
             var first = sameY[0].filter(function(x) {
@@ -894,8 +902,9 @@ var adjust = {
             rest.forEach(function(p) {
               d3.select(p).attr("x", nextX);
               nextX += d3.select(p).attr("width");
-            })
+            });
           }
+
           var minTop = d3.min(sameY[0], function(x) {
             return x.__data__.t_age;
           });
