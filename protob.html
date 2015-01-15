@@ -212,7 +212,7 @@ function getTimescaleData() {
     .domain([late_age, early_age])
     .range([0, 800]);
 
-  d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early_age + "&late_age=" + late_age, function(error, data) {
+  d3.json(baseURL + "/api/defs/intervals?timescale=international&rule=loose&early_age=" + early_age + "&late_age=" + late_age, function(error, data) {
     column.intervals = data.success.data;
     drawTimescale(data.success.data);
     setupUnits();
@@ -243,10 +243,6 @@ function drawTimescale(data, type) {
       .append("g")
         .attr("id", "timescale")
         .attr("data-zoomed", "false");
-
-  /*var scale = d3.scale.linear()
-      .domain([min, max])
-      .range([0, intervals.height])*/
     
   intervals.interval_lookup = interval_lookup;
 
@@ -543,16 +539,7 @@ var zoom = {
     }
 
     d3.selectAll(".crContainer").attr("transform", "translate(0,0)");
-   /* if (d3.select("#timescale").attr("data-zoomed") === "false") {
-      
-      var scaleY = units.height/d3.select("#n" + id).attr("height"),
-          translate = d3.select("#n" + id).attr("y") * scaleY;
 
-      zoom.inn.go(scaleY, translate);
-
-    } else {
-      zoom.out.go();
-    }*/
   },
   
   inn: {
@@ -825,14 +812,14 @@ var adjust = {
       column.units.visible = false;
 
       d3.select("#sectionContainer").select("svg").selectAll("g").transition()
-        .duration(1000)
+        .duration(700)
         .attr("transform", "translate(0,0)");
 
       d3.select("#sectionContainer")
         .style("z-index", 1);
 
       d3.select("#stratContainer").select("svg").selectAll("g").transition()
-        .duration(1000)
+        .duration(700)
         .attr("transform", "translate(1000,0)");
 
       d3.select("#stratContainer")
@@ -844,14 +831,14 @@ var adjust = {
       column.units.visible = true;
 
       d3.select("#sectionContainer").select("svg").selectAll("g").transition()
-        .duration(1000)
+        .duration(700)
         .attr("transform", "translate(-1000,0)");
       
       d3.select("#sectionContainer")
         .style("z-index", 0);
 
       d3.select("#stratContainer").select("svg").selectAll("g").transition()
-        .duration(1000)
+        .duration(700)
         .attr("transform", "translate(0,0)");
        
       d3.select("#stratContainer")
