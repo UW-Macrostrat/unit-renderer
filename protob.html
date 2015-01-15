@@ -5,7 +5,7 @@
 
 .node {
   fill: #ddd;
-  fill-opacity: 0.7;
+  fill-opacity: 1;
   stroke: #000;
   stroke-width: 0.01em;
 }
@@ -52,6 +52,7 @@
 <!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
 <script src="d3.v3.min.js"></script>
 <script src="underscore.min.js"></script>
+<script src="getDrawingColumns.js"></script>
 <script>
 /*
 
@@ -404,189 +405,54 @@ function setupUnits() {
 
 function drawStrats() {
   column.sections.forEach(function(section) {
-    function addToColumn(column_index, unit) {
-      if (columns[column_index].units.indexOf(parseInt(unit.id)) > -1) {
-        return false;
-      }
-      
-      if (unit.b_age > columns[column_index].top && columns[column_index].bottom > unit.t_age) {
-        // Unit overlaps the column's age range
-        return false;
-      } else {
-        if (columns[column_index].top < 0) {
-          columns[column_index].top = unit.t_age;
-        }
+    
+    // Get drawing columns - returns {"columns": columns, "units": units}
+    var parsed = getDrawingColumns(section.units);
 
-        columns[column_index].bottom = unit.b_age;
-        columns[column_index].units.push(parseInt(unit.id));
-        return true;
-      }
-    }
-    var columns = [
-      {
-        "top": -1,
-        "bottom": -1,
-        "units": []
-      }, {
-        "top": -1,
-        "bottom": -1,
-        "units": []
-      }, {
-        "top": -1,
-        "bottom": -1,
-        "units": []
-      }, {
-        "top": -1,
-        "bottom": -1,
-        "units": []
-      }, {
-        "top": -1,
-        "bottom": -1,
-        "units": []
-      }
-    ];
-
-    var unitHash = {};
-    section.units.forEach(function(d) {
-      unitHash[d.id] = d;
-    });
-
-    section.units.forEach(function(d, i) {
-      // If this is the first unit in a section...
-      if (d.units_above.length === 1 && d.units_above.indexOf(0) > -1) {
-       // if (!addToColumn(0, d)) {
-      //    console.log(d.strat_name, d.id)
-      //    console.log("FUP")
-       // }
-        if (columns[0].units.indexOf(parseInt(d.id)) < 0) {
-          columns[0].units.push(parseInt(d.id));
-        }
-        d.units_below.forEach(function(unit_below, p) {
-          if (columns[p].units.indexOf(parseInt(unit_below)) < 0) {
-            columns[p].units.push(parseInt(unit_below));
-          }
-        });
-      } else {
-        // If it's not the first unit in a section, its unit_id should already be in a "column"
-        // Find which "column" this unit is in
-        var idx = -1;
-        columns.forEach(function(column, k) {
-          if (column.units.indexOf(parseInt(d.id)) > -1) {
-            idx = k;
-          }
-        });
-
-        // if units_below.length === 1, add it's unit_below to the same column
-        if (d.units_below.length === 1 && (columns[idx].units.indexOf(parseInt(d.id)) > -1)) {
-          columns[idx].units.push(parseInt(d.units_below[0]))
-        
-        // else if units.below.length > 1, add one unit_below to each column
-        } else {
-
-          d.units_below.forEach(function(j,k) {
-            if (columns[k].units.indexOf(parseInt(j)) < 0) {
-              columns[k].units.push(parseInt(j));
-            }
-            
-          });
-        }
-        
-      }
-    });
-
-/* 
-  Need to figure out which column each unit is in!
+    section.units = parsed.units;
   
-
-  I'm not sure the below code is needed anymore..
-*/  
-    var remove = [];
-    columns.forEach(function(r,g) {
-      if (r.units.length < 1) {
-        remove.push(g);
-      }
-    });
-
-    remove.forEach(function(r) {
-      columns.splice(r, 1);
-    });
-
-    // Record the column(s) of each unit
+    /*
+      Record the first column appearance of each unit (`d.firstCol`) and
+      the total number of column appearances of each unit (`d.cols`)
+    */
     section.units.forEach(function(unit) {
-      unit.belongsToColumns = [];
-      columns.forEach(function(column, columnIndex) {
+      unit.firstCol = -1,
+      unit.cols = 0;
+      parsed.columns.forEach(function(column, columnIndex) {
         if (column.units.indexOf(unit.id) > -1) {
-          unit.belongsToColumns.push(columnIndex);
+          unit.cols++;
+          if (unit.firstCol < 0) {
+            unit.firstCol = columnIndex;
+          }
         }
       });
     });
 
+    // Find the bad ones
     section.units.forEach(function(d) {
       if (d.t_age > d.b_age) {
-        //console.log(d.strat_name + " IS BASS ACKWARDS");
         d3.select("#oddities").append("p").html("<a href='http://macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         return;
       }
-      var found = false;
-      for (var i=0; i<columns.length; i++) {
-        if (d.b_age > columns[i].top && columns[i].bottom > d.t_age) {
-          // Overlap - Add a new column
-        } else {
-          if (columns[i].top < 0) {
-            columns[i].top = d.t_age;
-          }
-
-          columns[i].bottom = d.b_age;
-          found = true;
-          d.col = i;
-          return;
-        }
-
-      }
-
-      if (!found) {
-        columns.push({'top': d.t_age, 'bottom': d.b_age});
-        d.col = columns.length - 1;
-      }
-
-    });
-    
-    section.units.forEach(function(d) {
-      d.overlaps = [];
-      section.units.forEach(function(j) {
-        if (d.id !== j.id) {
-          if (d.b_age > j.t_age && j.b_age > d.t_age) {
-            d.overlaps.push(j.id);
-          }
-        }
-      });
     });
 
-    section.units.forEach(function(d) {
-      var olContacts1 = _.intersection(d.overlaps, d.units_below),
-          olContacts2 = _.intersection(d.overlaps, d.units_above);
-      d.overlappingContacts = _.union(olContacts1, olContacts2)
-    });
-if (section.id == 4250) {
-    console.log(section.units)
-    console.log(columns);
-}
-    
-    var column_x_lookup = {
-        0: 0,
-        1: units.width/3,
-        2: units.width*1.5,
-        3: units.width*0.75
-      }
 
-    column.sectionLookup[section.id].column_x_lookup = column_x_lookup;
-    column.sectionLookup[section.id].columns = columns;
+   // column.sectionLookup[section.id].column_x_lookup = column_x_lookup;
+    column.sectionLookup[section.id].columns = parsed.columns;
 
+    // Ignore the bad ones
     var data = section.units.filter(function(d) {
       if (d.b_age > d.t_age) {
         return d;
       }
     });
+
+    parsed.inside.forEach(function(n) {
+      data.push(JSON.parse(n));
+    });
+
+    var widthUnit = units.width/parsed.columns.length;
+
     d3.select("#section")
     .selectAll(".units")
       .data(data)
@@ -594,19 +460,13 @@ if (section.id == 4250) {
       .attr("class", "node unit_node")
       .attr("id", function(d) { return "u" + d.id })
       .attr("x", function(d) { 
-        if (d.overlappingContacts.length > 0) {
-          return 0;
-        }
-        return column_x_lookup[d.col] 
+        // Let x be defined by d.firstCol
+        return (d.firstCol) ? d.firstCol * widthUnit : 0;
       })
       .attr("y", function(d) { return units.scale(d.t_age) })
-
       .attr("width", function(d) {
-        if (d.units_below.length > 1 || d.overlaps.length < 1) {
-          return (units.width/3) + (units.width/3);
-        } else {
-          return units.width/3;
-        }
+        // Let width be definied by d.cols
+        return (d.cols) ? d.cols * widthUnit : widthUnit/2;
       })
       .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)})
       .style("fill", function(d) { return d.color })
@@ -628,13 +488,8 @@ if (section.id == 4250) {
       .attr("id", function(d) { return "ul" + d.id })
       .attr("dy", ".35em")
       .attr("transform", function(d) { 
-        var x;
-        if (d.units_below.length > 1 || d.overlaps.length < 1) {
-          x = (column_x_lookup[d.col] + (units.width/1.5)/2)
-        } else {
-          x = (column_x_lookup[d.col] + (units.width/3)/2);
-        }
-        var y = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
+        var x = (d.firstCol * widthUnit) + ((d.cols * widthUnit)/2),
+            y = (units.scale(d.t_age)) + (units.scale(d.b_age)/2)
 
         return "translate(" + x  + "," + y+ ")" 
       })
@@ -1011,6 +866,10 @@ var adjust = {
   units: {
     zIndex: function() {
       d3.selectAll(".unit_node").each(function(d) {
+        if (d.putOnTop) {
+          d3.select(this).moveToFront();
+        }
+        
         var y = d3.select(this).attr("y")
         var sameY = d3.selectAll(".unit_node").filter(function(j) {
           if (d3.select(this).attr("y") === y) {
@@ -1019,6 +878,34 @@ var adjust = {
         });
 
         if (sameY[0].length > 1) {
+          
+          // Do they have the same height?
+          var heights = []
+          sameY[0].forEach(function(j) {
+            heights.push(d3.select(j).attr("height"));
+          });
+          var uniqHeights = _.uniq(heights);
+          if (uniqHeights.length === 1) {
+
+            var first = sameY[0].filter(function(x) {
+              if (d3.select(x).attr("x") == 0) {
+                return x;
+              }
+            });
+
+            var nextX = d3.select(first[0]).attr("width");
+            
+            var rest = sameY[0].filter(function(x) {
+              if (d3.select(x).attr("x") != 0) {
+                return x;
+              }
+            });
+
+            rest.forEach(function(p) {
+              d3.select(p).attr("x", nextX);
+              nextX += d3.select(p).attr("width");
+            })
+          }
           var minTop = d3.min(sameY[0], function(x) {
             return x.__data__.t_age;
           });
