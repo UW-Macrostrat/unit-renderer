@@ -1,47 +1,49 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<title>Macrostrat column renderer</title>
-<style>
+<head>
+  <meta charset="utf-8">
+  <title>Macrostrat column renderer</title>
+  <style>
 
-.node {
-  fill: #ddd;
-  fill-opacity: 1;
-  stroke: #000;
-  stroke-width: 0.01em;
-}
+  .node {
+    fill: #ddd;
+    fill-opacity: 1;
+    stroke: #000;
+    stroke-width: 0.01em;
+  }
 
-.label {
-  font: 10px sans-serif;
-  text-anchor: middle;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  cursor: default;
-}
+  .label {
+    font: 10px sans-serif;
+    text-anchor: middle;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
 
-.section_node {
-  cursor: pointer;
-}
+  .section_node {
+    cursor: pointer;
+  }
 
-#timescaleContainer, #stratContainer, #sectionContainer {
-  display: inline;
-}
+  #timescaleContainer, #stratContainer, #sectionContainer {
+    display: inline;
+  }
 
-#stratContainer, #sectionContainer {
-  position: absolute;
-  margin-left: 5px;
-}
+  #stratContainer, #sectionContainer {
+    position: absolute;
+    margin-left: 5px;
+  }
 
-#oddities {
-  position: absolute;
-  left: 700px;
-  top: 0;
-}
+  #oddities {
+    position: absolute;
+    left: 700px;
+    top: 0;
+  }
 
-</style>
+  </style>
+</head>
 <body>
   <div id="timescaleContainer"></div>
   <div id="stratContainer"></div>
@@ -54,24 +56,6 @@
 <script src="underscore.min.js"></script>
 <script src="getDrawingColumns.js"></script>
 <script>
-/*
-
-Check column 324 for rendering on top or lateral
-
-  1. Check if a section or column is requested
-    1a. If section, /api/units?section_id=? and get data.success.data[0].col_id
-    1b. If column, continue on
-  2. Get all units in column /api/units?col_id=?
-  3. Get all sections in a column /api/sections?col_id=?
-  4. Get min t_age and max b_age
-  5. Get timescale data /api/defs/intervals?timescale=international&early_age=?&late_age=?
-  6. drawTimescale()
-  7. drawStrats(sections)
-  8. drawStrats(units) 
-  9. Adjust view
-    9a. If section, zoom timescale and hide sections
-    9b. If column, hide units
-*/
 /*
   4. Texture units based on 'lith'
   5. Handle text display properly
@@ -568,6 +552,8 @@ var zoom = {
       zoom.inn.go(scaleY, translate);
     }
 
+    d3.selectAll(".crContainer").attr("transform", "translate(0,0)");
+
   },
   
   inn: {
@@ -579,6 +565,7 @@ var zoom = {
       this.timescale(scaleF, translate);
       this.sections(scaleF, translate);
       this.units(scaleF, translate);
+
     },
 
     timescale: function(scaleF, translate) {
@@ -941,41 +928,9 @@ var adjust = {
 
 init()
 
-/*
-# Column renderer workflow
-
-init
-  (findSectionColumn)
-  getStrats
-    getColumnSections
-    getColumnUnits
-      getTimescaleData
-        drawTimescale
-          displayLabelsIntervals
-        setupUnits
-          drawStrats
-            displayLabelsUnits
-        drawSections
-          adjustPosition
-          displayLabelsSections
-
-zoom
-  zoomIn
-    zoomInTimescale
-      displayLabelsIntervals
-    zoomInSection
-      displayLabelsSections
-
-  zoomOut
-    displayLabelsIntervals
-    zoomOutSections
-      displayLabelsSections
-    zoomOutUnits
-      displayLabelsUnits
-
-*/
-
 
 
 </script>
+</body>
+</html>
 
