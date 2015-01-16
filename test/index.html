@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <title>Macrostrat column renderer</title>
+  <style>
+
+  .node {
+    fill: #ddd;
+    fill-opacity: 1;
+    stroke: #000;
+    stroke-width: 0.01em;
+  }
+
+  .label {
+    font: 10px sans-serif;
+    text-anchor: middle;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
+
+  .section_node {
+    cursor: pointer;
+  }
+
+  #timescaleContainer, #stratContainer, #sectionContainer {
+    display: inline;
+  }
+
+  #stratContainer, #sectionContainer {
+    position: absolute;
+    margin-left: 5px;
+  }
+
+  #oddities {
+    position: absolute;
+    left: 700px;
+    top: 0;
+  }
+
+  </style>
+</head>
+<body>
+  <div id="timescaleContainer"></div>
+  <div id="stratContainer"></div>
+  <div id="sectionContainer"></div>
+  <div id="oddities">
+    <button>Swap Views</button>
+    <h4>These are wrong (and not drawn)</h4>
+  </div>
+  
+  <script src="bundle.js"></script>
+  
+</body>
+</html>
+

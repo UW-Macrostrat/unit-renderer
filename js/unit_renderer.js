@@ -1,77 +1,24 @@
-<!DOCTYPE html>
-<head>
-  <meta charset="utf-8">
-  <title>Macrostrat column renderer</title>
-  <style>
-
-  .node {
-    fill: #ddd;
-    fill-opacity: 1;
-    stroke: #000;
-    stroke-width: 0.01em;
-  }
-
-  .label {
-    font: 10px sans-serif;
-    text-anchor: middle;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    cursor: default;
-  }
-
-  .section_node {
-    cursor: pointer;
-  }
-
-  #timescaleContainer, #stratContainer, #sectionContainer {
-    display: inline;
-  }
-
-  #stratContainer, #sectionContainer {
-    position: absolute;
-    margin-left: 5px;
-  }
-
-  #oddities {
-    position: absolute;
-    left: 700px;
-    top: 0;
-  }
-
-  </style>
-</head>
-<body>
-  <div id="timescaleContainer"></div>
-  <div id="stratContainer"></div>
-  <div id="sectionContainer"></div>
-  <div id="oddities">
-    <button>Swap Views</button>
-    <h4>These are wrong (and not drawn)</h4></div>
-<!--<script src="http://d3js.org/d3.v3.min.js"></script>-->
-<script src="d3.v3.min.js"></script>
-<script src="underscore.min.js"></script>
-<script src="getDrawingColumns.js"></script>
-<script>
 /*
   4. Texture units based on 'lith'
   5. Handle text display properly
 
   INSERT INTO timescales_intervals (timescale_id, interval_id)  SELECT 11, id FROM `intervals` WHERE interval_type='era'
 */
-d3.selection.prototype.moveToFront = function() {
-  return this.each(function(){
-    this.parentNode.appendChild(this);
-  });
-};
-// Temporary way to toggle between unit and section view
-d3.select("button").on("click", function(d) {
-  d3.event.preventDefault();
-  adjust.graphic.swapViews();
-});
+
+var d3 = require("d3"),
+    _ = require("underscore"),
+    getDrawingColumns = require("./computeColumns");
+
+var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
+    units = {
+      width: 300,
+      height: 800
+    },
+    intervals = {
+      width: 50,
+      height: 800
+    },
+    column = {};
 
 var dragStart, transformStart,
     newY = 0.01;
@@ -103,35 +50,13 @@ var drag = d3.behavior.drag()
       });
   });
 
-var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
-    units = {
-      width: 300,
-      height: 800
-    },
-    intervals = {
-      width: 50,
-      height: 800
-    },
-    column = {}
 
-function init() {
-  // THIS IS A PLACEHOLDER
-  var chunk = window.location.hash.replace("#/", "");
+d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};
 
-  if (chunk.indexOf("section=") > -1) {
-    // We have section
-    var section = chunk.replace("section=", "");
-    findSectionColumn(section);
-  } else if (chunk.indexOf("column=") > -1) {
-    // We have a column
-    var column = chunk.replace("column=", "");
-    getStrats(column);
-  } else {
-    // Punt
-    findSectionColumn(4258, "section");
-  }
-
-}
 
 function findSectionColumn(section_id) {
   d3.json(baseURL + "/api/units?section_id=" + section_id, function(error, data) {
@@ -925,12 +850,8 @@ var adjust = {
   }
 }
 
+module.exports.findSectionColumn = findSectionColumn;
+module.exports.getStrats = getStrats;
 
-init()
 
-
-
-</script>
-</body>
-</html>
 

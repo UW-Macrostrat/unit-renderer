@@ -1,0 +1,26 @@
+{
+  "name": "unit_renderer",
+  "version": "0.0.1",
+  "description": "Column/section/unit renderer for macrostrat",
+  "main": "index.html",
+  "dependencies": {
+    "d3": "^3.5.3",
+    "underscore": "^1.7.0"
+  },
+  "devDependencies": {
+    "browserify": "^8.1.x"
+  },
+  "scripts": {
+    "build": "browserify test/app.js > test/bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UW-Macrostrat/unit-renderer.git"
+  },
+  "author": "John J Czaplewski <jczaplew@gmail.com>",
+  "license": "CC0",
+  "bugs": {
+    "url": "https://github.com/UW-Macrostrat/unit-renderer/issues"
+  },
+  "homepage": "https://github.com/UW-Macrostrat/unit-renderer"
+}
