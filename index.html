@@ -1,425 +1,83 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<title>Macrostrat section renderer</title>
-<style>
+<head>
+  <meta charset="utf-8">
+  <title>Macrostrat column renderer</title>
+  <style>
 
-.node {
-  fill: #ddd;
-  stroke: #000;
-  stroke-width: 0.01em;
-}
-
-.label {
-  font: 10px sans-serif;
-  text-anchor: middle;
-}
-
-#column, #column2 {
-  display: inline;
-}
-
-</style>
-<body>
-  <div id="column"></div>
-  <div id="column2"></div>
-<script src="http://d3js.org/d3.v3.min.js"></script>
-<!--<script src="d3.v3.min.js"></script>-->
-<script>
-
-var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org"
-
-function getSection(id) {
-  d3.json(baseURL + "/api/units?response=long&section_id=" + id, function(error, data) {
-    var units = data.success.data;
-
-    var late_age = d3.min(units, function(d) { return d.LO_age }),
-        early_age = d3.max(units, function(d) { return d.FO_age });
-    
-    getTimeIntervals(early_age, late_age, units);
-
-  });
-}
-
-
-function getTimeIntervals(early, late, units) {
-  // 1. Find all intervals that overlap this range
-  d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
-    // 2. Check if any periods were returned
-    var periods = data.success.data.filter(function(d) {
-      if (d.type === "period") {
-        return d;
-      }
-    });
-
-    // 2B. Otherwise, find the period that contains the midpoint of this range
-    if (periods.length < 1) {
-      d3.json("http://localhost:5000/api/defs/intervals?timescale=international&age=" + parseInt(((min + max) / 2)), function(error, data) {
-        getAllIntervals(units, data.success.data);
-      });
-
-    // 2A. If so, continue on
-    } else {
-      if (d3.min(periods, function(d) { return d.late_age }) > late) {
-        // Not late enough
-        console.log("not late enough");
-        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + late, function(error, data) {
-          var period = data.success.data.filter(function(d) {
-            if (d.type === "period") {
-              return d;
-            }
-          });
-          periods.push(period[0]);
-          getAllIntervals(units, periods);
-        });
-      } else if (d3.max(periods, function(d) { return d.early_age }) < early) {
-        // Not early enough
-        console.log("not early enough");
-        d3.json(baseURL + "/api/defs/intervals?timescale=international&age=" + early, function(error, data) {
-          var period = data.success.data.filter(function(d) {
-            if (d.type === "period") {
-              return d;
-            }
-          });
-          periods.push(period[0]);
-          getAllIntervals(units, periods);
-        }); 
-      } else {
-        getAllIntervals(units, periods);
-      }
-    }
-  });
-}
-
-function getAllIntervals(units, periods) {
-  // 3. Find the late_age and early_age of all periods returned
-  var late = d3.min(periods, function(d) { return d.late_age }),
-      early = d3.max(periods, function(d) { return d.early_age });
-
-  // Draw the units
-  var scale = d3.scale.linear()
-    .domain([late, early])
-    .range([0, 800]);
-
-  drawUnits(scale, units);
-
-  // 4. Basically redo #1, but with this new range
-  // Find all intervals in this period
-  d3.json(baseURL + "/api/defs/intervals?timescale=international&early_age=" + early + "&late_age=" + late, function(error, data) {
-    data.success.data.forEach(function(d) {
-     // d.boundaries = 0;
-      d.children = [];
-      d.boundaries = [];
-      d.t_boundaries = 0;
-    });
-    countBoundaries(data.success.data, units);
-  });
-
-}
-
-
-function countBoundaries(intervals, units) {
-  units.forEach(function(d) {
-    intervals.forEach(function(j) {
-      if (j.type === "age") {
-        if (d.t_age >= j.late_age && d.t_age <= d.early_age) {
-         // console.log(d.strat_name)
-          d.early_age = d.FO_age;
-          d.late_age = d.LO_age;
-          if (j.boundaries.indexOf(d.t_age) < 0) {
-            j.boundaries.push(d.t_age);
-          }
-          //j.children.push(d)
-          
-         // j.boundaries++;
-        } else if (d.b_age >= j.late_age && d.b_age <= d.early_age) {
-         // console.log(d.strat_name)
-          d.early_age = d.FO_age;
-          d.late_age = d.LO_age;
-          //j.children.push(d)
-          //j.boundaries++;
-          if (j.boundaries.indexOf(d.b_age) < 0) {
-            j.boundaries.push(d.b_age);
-          }
-        } else if (d.t_age >= j.late_age && d.t_age <= j.early_age) {
-         // console.log(d.strat_name)
-          d.early_age = d.FO_age;
-          d.late_age = d.LO_age;
-          //j.children.push(d)
-          //j.boundaries += 1;
-          if (j.boundaries.indexOf(d.t_age) < 0) {
-            j.boundaries.push(d.t_age);
-          }
-        } else {
-        //  console.log("NOT MATCHED - ", d.strat_name)
-        }
-      }
-    });
-  });
-
-  hierarch(intervals);
-}
-
-function hierarch(intervals) {
-  var periods = intervals.filter(function(d) {
-    if (d.type === "period") {
-      return d;
-    }
-  });
-
-  var epochs = intervals.filter(function(d) {
-    if (d.type === "epoch") {
-      return d;
-    }
-  });
-
-  var ages = intervals.filter(function(d) {
-    if (d.type === "age") {
-      return d;
-    }
-  });
-  
-  ages.forEach(function(d) {
-    epochs.forEach(function(j) {
-      if (d.late_age >= j.late_age && d.early_age <= j.early_age) {
-        j.children.push(d);
-        //j.boundaries += d.boundaries;
-        j.t_boundaries += d.boundaries.length
-      }
-    });
-  });
-
-  epochs.forEach(function(d) {
-    periods.forEach(function(j) {
-      if (d.late_age >= j.late_age && d.early_age <= j.early_age) {
-        j.children.push(d);
-        //j.boundaries += d.boundaries;
-        j.t_boundaries += d.t_boundaries
-      }
-    });
-  });
-
-  if (periods.length > 1) {
-    var wrapper = {
-      "color": "#000",
-      "early_age": d3.max(periods, function(d) { return d.early_age }),
-      "late_age": d3.min(periods, function(d) { return d.late_age }),
-      "name": "time",
-      "children": periods
-    }
-    draw([wrapper]);
-  } else {
-    draw(periods);
+  .node {
+    fill: #ddd;
+    fill-opacity: 1;
+    stroke: #000;
+    stroke-width: 0.01em;
   }
-    
- // draw2(periods);
-}
 
-function draw(data) {
-  console.log(data);
-  var width = 100,
-    height = 800;
+  .label {
+    font: 10px sans-serif;
+    text-anchor: middle;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    cursor: default;
+  }
 
-  d3.select("#column").select("svg").remove();
+  .section_node {
+    cursor: pointer;
+  }
 
-  var svg = d3.select("#column").append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .append("g")
-         .attr("id", "timescale")
-         .attr("data-zoomed", "false");
+  #timescaleContainer, #stratContainer, #sectionContainer {
+    display: inline;
+  }
 
-  var scale = d3.scale.linear()
-      .domain([0, 1])
-      .range([10, height])
+  #stratContainer, #sectionContainer {
+    position: absolute;
+    margin-left: 5px;
+  }
 
-  var partition = d3.layout.partition()
-      .size([width, height])
-      .sort(function(a, b) {
-        if (a.early_age > b.early_age) {
-          return 1;
-        }
-        if (a.early_age < b.early_age) {
-          return -1;
-        }
-      })
-      .value(function(d) { return scale(d.t_boundaries) });
-      //.value(function(d) { return (d.early_age - d.late_age); });
+  #oddities {
+    position: absolute;
+    left: 700px;
+    top: 0;
+  }
 
-  var nodes = partition.nodes(data[0]);
+  </style>
+</head>
+<body>
+  <div id="columnContainer"></div>
+  <div id="oddities">
+    <button>Swap Views</button>
+    <h4>These are wrong (and not drawn)</h4>
+  </div>
 
-  svg.selectAll(".node")
-      .data(nodes)
-    .enter().append("rect")
-      .attr("class", "node")
-      .attr("id", function(d) { return "n" + d.name })
-      .attr("x", function(d) { return d.y * (width/height); })
-      .attr("y", function(d) { return d.x * (height/width); })
-      .attr("width", function(d) { return d.dy * (width/height); })
-      .attr("height", function(d) { return d.dx * (height/width); })
-      .style("fill", function(d) { return d.color })
-      .on("click", function(d) {
-        if (svg.attr("data-zoomed") === "false") {
-          svg.attr("data-zoomed", "true");
-          var translateY = d3.select(this).attr("y"),
-              scaleY = 800/d3.select(this).attr("height");
+  <script src="js/d3.min.js"></script>
+  <script src="js/underscore.min.js"></script>
+  <script src="js/getDrawingColumns.js"></script>
+  <script src="js/renderer.js"></script>
+  <script>
+    // Temporary way to toggle between unit and section view
+    d3.select("button").on("click", function(d) {
+      d3.event.preventDefault();
+      cr.adjust.graphic.swapViews();
+    });
 
-          d3.selectAll("#timescale, #section")
-            .transition()
-            .duration(1000)
-            .attr("transform", "scale(1," + scaleY + ")translate(0,-" + translateY + ")");
-        } else {
-          svg.attr("data-zoomed", "false");
-          d3.selectAll("#timescale, #section")
-            .transition()
-            .duration(1000)
-            .attr("transform", "scale(1,1)translate(0,0)");
-        }
-          
-      });
+    var chunk = window.location.hash.replace("#/", "");
 
-  /*svg.selectAll(".label")
-      .data(nodes.filter(function(d) { return d.dx > 6; }))
-    .enter().append("text")
-      .attr("class", "label")
-      .attr("dy", ".35em")
-      .attr("transform", function(d) { return "translate(" + ((d.y * (width/height)) + ((d.dy * (width/height)) / 2)) + "," + ((d.x * (height/width)) + ((d.dx * (height/width)) / 2)) + ")rotate(-90)"; })
-      .text(function(d) { return d.name; });*/
-
-}
-
-function drawUnits(scale, units) {
-  var columns = [
-    {
-      'top': -1,
-      'bottom': -1
-    }
-  ];
-  units.forEach(function(d) {
-    if (d.t_age > d.b_age) {
-      console.log(d.strat_name + " IS BASS ACKWARDS");
-      return;
-    }
-    var found = false;
-    for (var i=0; i<columns.length; i++) {
-      if (d.t_age >= columns[i].top && d.b_age <= columns[i].bottom) {
-        // add new column
-        console.log("a - " + d.strat_name)
-      } else if (d.t_age < columns[i].top && d.b_age > columns[i].top) {
-        // add new column
-        console.log("b - " + d.strat_name)
-      } else if (d.t_age < columns[i].bottom && d.t_age > columns[i].top) {
-        // add new column
-        console.log("c - " + d.strat_name)
-      } else {
-        console.log("d - " + d.strat_name)
-        if (columns[i].top < 0) {
-          columns[i].top = d.t_age;
-        }
-
-        columns[i].bottom = d.b_age;
-        found = true;
-        d.col = i;
-        return;
-      }
+    if (chunk.indexOf("section=") > -1) {
+      // We have section
+      var section = chunk.replace("section=", "");
+      cr.start(section, "section", "columnContainer");
+    } else if (chunk.indexOf("column=") > -1) {
+      // We have a column
+      var column = chunk.replace("column=", "");
+      cr.start(column, "column", "columnContainer");
+    } else {
+      // Punt
+      cr.start(4258, "section", "columnContainer");
     }
 
-
-    if (!found) {
-      columns.push({'top': d.t_age, 'bottom': d.b_age});
-      d.col = columns.length - 1;
-    }
-
-  });
-
-  console.log(columns);
-
-  var width = 300,
-      height = 800;
-      
-  var svg = d3.select("#column2").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .append("g")
-      .attr("id", "section");
-
-  svg.selectAll(".units")
-    .data(units)
-  .enter().append("rect")
-    .attr("class", "node")
-    .attr("id", function(d) { return d.strat_name })
-    .attr("x", function(d) { return d.col * 50 })
-    .attr("y", function(d) { return scale(d.t_age) })
-    .attr("width", 50)
-    .attr("height", function(d) { return scale(d.b_age) - scale(d.t_age)})
-    .style("fill", function(d) { return d.color });
-
- /* svg.selectAll(".unit_label")
-    .data(units)
-  .enter().append("text")
-    .attr("class", "label")
-    .attr("dy", ".35em")
-    .attr("transform", function(d) { return "translate(" + (d.col * 50 + 25)  + "," + (scale(d.t_age) + (scale(d.b_age) - scale(d.t_age))/2) + ")rotate(-90)" })
-    .text(function(d) { return d.strat_name; });*/
-}
-
-/*
-
- svg.selectAll(".units")
-    .data(units)
-  .enter().append("rect")
-    .attr("class", "node")
-    .attr("id", function(d) { return d.strat_name })
-    .attr("x", 0)
-    .attr("y", function(d) { return scale(d.LO_age) })
-    .attr("width", 50)
-    .attr("height", function(d) { return scale(d.FO_age) - scale(d.LO_age)})
-    .style("fill", function(d) { return d.color })
-
-
-function draw2(data) {
-  var width = 300,
-    height = 500;
-
-  d3.select("#column2").select("svg").remove();
-
-  var svg = d3.select("#column2").append("svg")
-      .attr("width", width)
-      .attr("height", height)
-      .append("g")
-        //.attr("transform", "translate(0," + height + ")rotate(-90)");
-
-  var partition = d3.layout.partition()
-      .size([width, height])
-      .value(function(d) { return (d.early_age - d.late_age); });
-
-  var nodes = partition.nodes(data[0]);
-
-  svg.selectAll(".node")
-      .data(nodes)
-    .enter().append("rect")
-      .attr("class", "node")
-      .attr("x", function(d) { return d.x; })
-      .attr("y", function(d) { return d.y; })
-      .attr("width", function(d) { return d.dx; })
-      .attr("height", function(d) { return d.dy; })
-      .style("fill", function(d) { return d.color });
-
-  svg.selectAll(".label")
-      .data(nodes.filter(function(d) { return d.dx > 6; }))
-    .enter().append("text")
-      .attr("class", "label")
-      .attr("dy", ".35em")
-      .attr("transform", function(d) { return "translate(" + (d.x + d.dx / 2) + "," + (d.y + d.dy / 2) + ")rotate(90)"; })
-      .text(function(d) { return d.name; });
-}*/
-
-var section = window.location.hash.replace("#/", "");
-if (section.length > 0) {
-  getSection(section);
-} else {
-  getSection(4258);
-}
-
-
-</script>
+  </script>
+</body>
+</html>
 
