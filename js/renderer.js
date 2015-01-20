@@ -346,6 +346,16 @@ var cr = (function() {
   function drawStrats() {
     column.sections.forEach(function(section) {
 
+      // Find the bad ones
+      section.units.forEach(function(d) {
+        if (d.t_age > d.b_age) {
+          d3.select("#oddities").append("p").html("Backwards - <a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+        } else if (d.t_age === d.b_age) {
+          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+        }
+
+      });
+
    //!!!!!! Temporary code
       if (section.invalid) {
         d3.select("#oddities").append("p").html("Section " + section.id + " overlaps with another section");
@@ -383,13 +393,7 @@ var cr = (function() {
         });
       });
 
-      // Find the bad ones
-      section.units.forEach(function(d) {
-        if (d.t_age > d.b_age) {
-          d3.select("#oddities").append("p").html("<a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
-          return;
-        }
-      });
+      
 
       // Ignore the bad ones
       var data = section.units.filter(function(d) {
