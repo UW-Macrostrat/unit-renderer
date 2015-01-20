@@ -431,7 +431,7 @@ var cr = (function() {
           if (d3.event.defaultPrevented) return;
           console.log(d);
         })
-        .append("title").text(function(d) { return d.strat_name });
+        .append("title").text(function(d) { return d.strat_name + " (" + d.id + ")" });
 
       d3.select("#stratContainer")
         .select(".crContainer")
