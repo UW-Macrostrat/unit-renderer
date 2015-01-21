@@ -52,7 +52,7 @@ var cr = (function() {
     });
 
 
-  function start(id, type, div) {
+  function init(div) {
     if (!div) {
       throw new Error("Column renderer requires a div")
     }
@@ -63,11 +63,6 @@ var cr = (function() {
     d3.select("#" + div).append("div").attr("id", "sectionContainer");
     d3.select("#" + div).append("div").attr("id", "stratContainer");
 
-    if (type === "column") {
-      getStrats(id);
-    } else {
-      findSectionColumn(id);
-    }
   }
 
   function findSectionColumn(section_id) {
@@ -404,7 +399,9 @@ var cr = (function() {
 
       // Add the units that are entirely surrounded by another unit to the drawing data
       parsed.inside.forEach(function(n) {
-        data.push(JSON.parse(n));
+        var parsed = JSON.parse(n);
+        parsed.putOnTop = true;
+        data.push(parsed);
       });
 
       d3.select("#section")
@@ -421,12 +418,18 @@ var cr = (function() {
           if (d.within) {
             return parsed.unitHash[d.withinUnit].firstCol * widthUnit;
           }
+          if (d.isInside) {
+            return parsed.unitHash[d.isInside].firstCol * widthUnit;
+          }
           return (d.firstCol) ? d.firstCol * widthUnit : 0;
         })
         .attr("width", function(d) {
           // Let width be definied by d.cols
           if (d.within) {
             return units.width/2;
+          }
+          if (d.isInside) {
+            return (parsed.unitHash[d.isInside].cols * widthUnit)/2
           }
           return (d.cols) ? d.cols * widthUnit : units.width/2;
         })
@@ -867,7 +870,9 @@ var cr = (function() {
   }
 
   return {
-    "start": start,
+    "init": init,
+    "goToColumn": getStrats,
+    "goToSection": findSectionColumn,
     "adjust": adjust,
     "zoom": zoom,
     "column": column

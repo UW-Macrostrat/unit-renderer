@@ -64,17 +64,19 @@
 
     var chunk = window.location.hash.replace("#/", "");
 
+    cr.init("columnContainer");
+
     if (chunk.indexOf("section=") > -1) {
       // We have section
       var section = chunk.replace("section=", "");
-      cr.start(section, "section", "columnContainer");
+      cr.goToSection(section);
     } else if (chunk.indexOf("column=") > -1) {
       // We have a column
       var column = chunk.replace("column=", "");
-      cr.start(column, "column", "columnContainer");
+      cr.goToColumn(column);
     } else {
       // Punt
-      cr.start(4258, "section", "columnContainer");
+      cr.goToSection(4258);
     }
 
   </script>
