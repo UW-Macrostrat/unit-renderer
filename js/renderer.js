@@ -66,6 +66,7 @@ var cr = (function() {
   }
 
   function findSectionColumn(section_id) {
+    column = {};
     d3.json(baseURL + "/api/units?section_id=" + section_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find section " + section_id + " while retrieving units");
@@ -77,6 +78,7 @@ var cr = (function() {
 
 
   function getStrats(col_id) {
+    column = {};
     getColumnUnits(col_id);
     getColumnSections(col_id);
   }
@@ -301,6 +303,7 @@ var cr = (function() {
 
 
   function setupUnits() {
+    d3.selectAll("#section").remove();
     
     // Remove any old ones
     d3.select("#stratContainer").select("svg").remove();
@@ -340,7 +343,6 @@ var cr = (function() {
 
   function drawStrats() {
     column.sections.forEach(function(section) {
-
       // Find the bad ones
       section.units.forEach(function(d) {
         if (d.t_age > d.b_age) {
