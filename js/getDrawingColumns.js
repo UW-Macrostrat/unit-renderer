@@ -1,3 +1,20 @@
+/* via https://gist.github.com/kjantzer/3974823 */
+_.mixin({
+  move: function (array, fromIndex, toIndex) {
+    array.splice(toIndex, 0, array.splice(fromIndex, 1)[0] );
+    return array;
+  } 
+});
+
+/* via https://gist.github.com/kjantzer/3974823 */
+_.mixin({
+  moveShallow: function (array, fromIndex, toIndex) {
+    var newArray = array.slice(0);
+    newArray.splice(toIndex, 0, newArray.splice(fromIndex, 1)[0] );
+    return newArray;
+  } 
+});
+
 function getDrawingColumns(units) {
 
 
@@ -16,7 +33,7 @@ function getDrawingColumns(units) {
   function getUnitBelow(units_below) {
     if (units_below.length > 1) {
       for (var i = 1; i < units_below.length; i++) {
-        if (toCheck.indexOf(units_below[i]) < 0) {
+        if (toCheck.indexOf(units_below[i]) < 0 && !topHash[units_below[i]]) {
           toCheck.push(units_below[i]);
         }
       }
@@ -28,7 +45,7 @@ function getDrawingColumns(units) {
   function getUnitAbove(units_above) {
     if (units_above.length > 1) {
       for (var i = 1; i < units_above.length; i++) {
-        if (checked.indexOf(units_above[i]) < 0) {
+        if (checked.indexOf(units_above[i]) < 0 && !topHash[units_above[i]]) {
           toCheck.push(units_above[i]);
         }
         
@@ -88,10 +105,7 @@ function getDrawingColumns(units) {
   var columns = [{"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}];
 
   // This makes looking up units by ID much easier - no need to loop through and find it
-  var unitHash = {};
-  units.forEach(function(d) {
-    unitHash[d.id] = d;
-  });
+  var unitHash = _.indexBy(units, "id");
 
   /* First we are going to find units that are ENTIRELY inside other units */
 
@@ -153,6 +167,8 @@ function getDrawingColumns(units) {
     }
   });
 
+  // Easily remember which units are tops
+  topHash = _.indexBy(tops, "id");
   // For each top, navigate down the section
   tops.forEach(function(d) {
     start(d);
@@ -165,6 +181,217 @@ function getDrawingColumns(units) {
     }
   });
 
+  if (units[0].section_id === 74) {
+    console.log(columns)
+  }
+
+  var heap = [],
+      checked = [],
+      not_found = [];
+  // Make sure columns are properly sorted...
+  units.forEach(function(d) {
+
+    // 1. Find all columns that contain this unit + record them in an array
+    var inColumns = findUnitInColumns(d.id, columns);
+    // 2. If in more than one column, check if they are consecutive
+    if (inColumns.length > 1) {
+      // 2A. If they are not consecutive, we need to reorder them
+      if (!areColumnsInOrder(inColumns)) {
+        console.log("Working on ", d.id)
+        /*
+        // By here we know we need a fix
+        // i. get top and bottom contacts of this unit
+        var aboves = d.units_above,
+            bottoms = d.units_below;
+
+        // ii. See if at least one top and one bottom are in the target column
+
+        var targetIndex = -1,
+            // Array of indices of possible columns
+            possibleColumns = [],
+            possibleColumnsHash = {};
+
+        // Find all columns that have some combination of the tops and bottoms
+        columns.forEach(function(c, i) {
+          var topPresent = false,
+              topPresentIndex = -1,
+              bottomPresent = false,
+              bottomPresentIndex = -1;
+
+          aboves.forEach(function(x, k) {
+            if (c.units.indexOf(x) > -1) {
+              topPresent = true;
+              topPresentUnit = x;
+            }
+          });
+
+          bottoms.forEach(function(x, k) {
+            if (c.units.indexOf(x) > -1) {
+              bottomPresent = true;
+              bottomPresentUnit = x;
+            }
+          });
+
+          if (topPresent && bottomPresent) {
+            if ((c.units.indexOf(bottomPresentUnit) - c.units.indexOf(topPresentUnit)) === 2) {
+              possibleColumns.push(i);
+              possibleColumnsHash[i] = {
+                "above": topPresentUnit,
+                "below": bottomPresentUnit
+              }
+            }
+          }
+        });
+
+        possibleColumns = _.difference(possibleColumns, inColumns);
+*/
+      //  if (possibleColumns.length < 1) {
+
+          //console.log("Rearrange columns")
+          // Keep yo stack in check
+
+          // Keep sorting until they are in order
+         // while (!areColumnsInOrder(inColumns)) {
+           // console.log(inColumns)
+          var indices = findGap(inColumns);
+
+         // console.log("moving", d.id)
+         /*console.log("from index - ", indices["fromIndex"], inColumns)
+          for (var i = 0; i < columns.length; i++) {
+            console.log(i)
+            newColumnOrder = _.moveShallow(columns, indices["fromIndex"], i);
+            // Check if the sort was valid
+            if (validSort(checked, newColumnOrder)) {
+              console.log("valid sort");
+              _.move(columns, indices["fromIndex"], i);
+              break;
+            } else {
+              console.log(checked, newColumnOrder);
+              console.log("Not a valid sort!");
+
+              // Try a different sort...
+            }
+          }*/
+
+          var found = false
+          for (var i = 0; i < columns.length; i++) {
+            var broken = false;
+            for (var j = 0; j < columns.length; j++) {
+              newColumnOrder = _.moveShallow(columns, i, j);
+              // Check if the sort was valid
+              if (validSort(checked, newColumnOrder)) {
+                console.log("valid sort");
+                _.move(columns, i, j);
+                broken = true;
+                found = true;
+                checked.push(d.id);
+                break;
+              }
+            }
+           // if (broken) {
+          //    break;
+          //  }
+          }
+
+          if (!found) {
+            console.log("Couldn't find a sort for ", d.id, checked);
+            not_found.push(d.id);
+          }
+          inColumns = findUnitInColumns(d.id, columns);
+         // }
+     /*   } else {
+          var target = possibleColumns[0];
+
+          var unitToMoveIndex = columns[target].units.indexOf(possibleColumnsHash[target].above) + 1,
+              unitToMove = columns[target].units[unitToMoveIndex];
+              
+          // get the val
+          console.log(possibleColumns)
+          console.log("Swap units in columns", unitToMoveIndex, unitToMove)
+        }*/
+
+        // If a top and bottom are both in the target column, see what's between them
+        /*if (topPresent && bottomPresent) {
+          // If there is only one unit between them...
+          if ((colums[targetIndex].indexOf(bottomPresentIndex) - columns[targetIndex].indexOf(topPresentIndex)) === 2) {
+            // ...get that unit
+            var unitToSwapIndex = colums[targetIndex].indexOf(bottomPresentIndex) - 1,
+                unitToSwap = columns[targetIndex][unitToSwapIndex];
+            
+            // ... And then do the swap
+          }
+        }*/
+          
+      } else {
+        inColumns.forEach(function(g) {
+          if (heap.indexOf(g) < 0) {
+            heap.push(g);
+          } else {
+          }
+        });
+      }
+    } 
+    
+  });
+  
+  //console.log("Not found - ", not_found);
+
+  function validSort(us, cs) {
+    var broken = false;
+    for (var i = 0; i < us.length; i++) {
+      // Find all columns the unit is in
+      var inColumns = findUnitInColumns(us[i], cs);
+      // 2. If in more than one column, check if they are consecutive
+      if (inColumns.length > 1) {
+        // If they are no longer consecutive, return false;
+        if (!areColumnsInOrder(inColumns)) {
+          broken = true;
+          break;
+        }
+      }
+    }
+
+    if (broken) {
+      return false;
+    } else {
+      return true;
+    }
+
+  }
+
+ // console.log(columns)
+  function findUnitInColumns(unit_id, cs) {
+    var inColumns = [];
+    cs.forEach(function(j, i) {
+      if (_.contains(j.units, unit_id)) {
+        inColumns.push(i);
+      } 
+    });
+
+    return inColumns;
+  }
+
+  function areColumnsInOrder(a) {
+    var first = _.first(a),
+        last = _.last(a);
+
+    if ((last - first) === (a.length - 1)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  function findGap(a) {
+    for (var i = 0; i < a.length; i++) {
+      if ((a[i + 1] - a[i]) > 1) {
+        // {fromIndex: toIndex}
+        return { "fromIndex" : a[i + 1],
+                 "toIndex"   : a[i] + 1 
+               }
+      }
+    }
+  }
   // Debugging...
   //var notChecked = getUnChecked();
   //console.log("Checked - ", checked);

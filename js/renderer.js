@@ -12,12 +12,12 @@ var cr = (function() {
 
   var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
     units = {
-      width: 300,
-      height: 800
+      width: 200,
+      height: 600
     },
     intervals = {
       width: 50,
-      height: 800
+      height: 600
     },
     column = {}
 
@@ -78,7 +78,7 @@ var cr = (function() {
 
 
   function getStrats(col_id) {
-    column = {};
+    //column = {};
     getColumnUnits(col_id);
     getColumnSections(col_id);
   }
@@ -140,7 +140,7 @@ var cr = (function() {
 
     units.scale = d3.scale.linear()
       .domain([late_age, early_age])
-      .range([0, 800]);
+      .range([0, units.height]);
 
     d3.json(baseURL + "/api/defs/intervals?timescale=international&rule=loose&early_age=" + early_age + "&late_age=" + late_age, function(error, data) {
       column.intervals = data.success.data;
@@ -304,7 +304,7 @@ var cr = (function() {
 
   function setupUnits() {
     d3.selectAll("#section").remove();
-    
+
     // Remove any old ones
     d3.select("#stratContainer").select("svg").remove();
 
@@ -363,7 +363,9 @@ var cr = (function() {
       /* Get drawing columns (function imported from getDrawingColumns.js)
           returns {"columns": columns, "units": units}
       */
+      //console.log(section);
       var parsed = getDrawingColumns(section.units);
+
 
       // The width (px) of one "column" in a section
       var widthUnit = units.width/parsed.columns.length;
@@ -470,7 +472,9 @@ var cr = (function() {
       
       adjust.labels.units();
       adjust.units.zIndex();
+
     });
+    
   }
 
 
@@ -735,7 +739,8 @@ var cr = (function() {
     graphic: {
       
       position: function() {
-        var chunk = window.location.hash.replace("#/", "");
+        this.showUnits();
+     /*   var chunk = window.location.hash.replace("#/", "");
 
         if (chunk.indexOf("section=") > -1) {
           // We have section
@@ -752,7 +757,7 @@ var cr = (function() {
         } else {
           // Punt
           this.showUnits();
-        }
+        }*/
       },
 
       swapViews: function() {

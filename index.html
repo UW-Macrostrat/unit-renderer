@@ -41,6 +41,9 @@
     left: 700px;
     top: 0;
   }
+  .unit_node {
+    fill-opacity: 0.8;
+  }
 
   </style>
 </head>
@@ -48,6 +51,9 @@
   <div id="columnContainer"></div>
   <div id="oddities">
     <button>Swap Views</button>
+    <form name="changeColumns" onSubmit="return handleColumnChange()">
+      <input type="text" placeholder="Enter a column number" id="columnIdInput"/>
+    </form>
     <h4>These are wrong (and not drawn)</h4>
   </div>
 
@@ -61,6 +67,14 @@
       d3.event.preventDefault();
       cr.adjust.graphic.swapViews();
     });
+
+    function handleColumnChange() {
+      var col_id = document.getElementById("columnIdInput").value;
+      cr.goToColumn(col_id);
+      window.location.hash = "#/column=" + col_id; 
+      document.getElementById("columnIdInput").value = ""
+      return false;
+    }
 
     var chunk = window.location.hash.replace("#/", "");
 
