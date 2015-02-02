@@ -6,7 +6,6 @@ _.mixin({
   } 
 });
 
-/* via https://gist.github.com/kjantzer/3974823 */
 _.mixin({
   moveShallow: function (array, fromIndex, toIndex) {
     var newArray = array.slice(0);
@@ -101,7 +100,7 @@ function getDrawingColumns(units) {
 
   }
 
-  // This keeps track of our columns - start with 
+  // This keeps track of our columns - start with too many and delete unused ones later
   var columns = [{"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}];
 
   // This makes looking up units by ID much easier - no need to loop through and find it
@@ -169,25 +168,22 @@ function getDrawingColumns(units) {
 
   // Easily remember which units are tops
   topHash = _.indexBy(tops, "id");
+
   // For each top, navigate down the section
   tops.forEach(function(d) {
     start(d);
   });
 
-  // Remove unused columns
+  // By here we'll have our matrix. Remove unused columns.
   columns = columns.filter(function(d) {
     if (d.units.length > 0) {
       return d;
     }
   });
 
-  if (units[0].section_id === 74) {
-    console.log(columns)
-  }
-
-  var heap = [],
-      checked = [],
+  var checked = [],
       not_found = [];
+      
   // Make sure columns are properly sorted...
   units.forEach(function(d) {
 
@@ -253,7 +249,7 @@ function getDrawingColumns(units) {
           // Keep sorting until they are in order
          // while (!areColumnsInOrder(inColumns)) {
            // console.log(inColumns)
-          var indices = findGap(inColumns);
+         // var indices = findGap(inColumns);
 
          // console.log("moving", d.id)
          /*console.log("from index - ", indices["fromIndex"], inColumns)
@@ -288,6 +284,10 @@ function getDrawingColumns(units) {
                 break;
               }
             }
+
+        /* Things seems to work better if we don't bail early with the first valid sort. 
+           Last sort seems to work way better for some reason... */
+
            // if (broken) {
           //    break;
           //  }
@@ -322,20 +322,13 @@ function getDrawingColumns(units) {
           }
         }*/
           
-      } else {
-        inColumns.forEach(function(g) {
-          if (heap.indexOf(g) < 0) {
-            heap.push(g);
-          } else {
-          }
-        });
       }
     } 
     
   });
   
-  //console.log("Not found - ", not_found);
-
+  /* Verify the validity of any given sort, given an array of 
+     already verified units and a sort of the "columns" */
   function validSort(us, cs) {
     var broken = false;
     for (var i = 0; i < us.length; i++) {
@@ -359,7 +352,7 @@ function getDrawingColumns(units) {
 
   }
 
- // console.log(columns)
+
   function findUnitInColumns(unit_id, cs) {
     var inColumns = [];
     cs.forEach(function(j, i) {
@@ -370,6 +363,7 @@ function getDrawingColumns(units) {
 
     return inColumns;
   }
+
 
   function areColumnsInOrder(a) {
     var first = _.first(a),
@@ -382,6 +376,7 @@ function getDrawingColumns(units) {
     }
   }
 
+
   function findGap(a) {
     for (var i = 0; i < a.length; i++) {
       if ((a[i + 1] - a[i]) > 1) {
@@ -392,6 +387,7 @@ function getDrawingColumns(units) {
       }
     }
   }
+
   // Debugging...
   //var notChecked = getUnChecked();
   //console.log("Checked - ", checked);
@@ -402,6 +398,7 @@ function getDrawingColumns(units) {
     console.log(d.id + " is inside " + d.isInside)
   });
 
+  // This helps us display units that are inside other units or lay on top awkwardly
   units.forEach(function(d) {
     var top = d.t_age,
         bot = d.b_age;
