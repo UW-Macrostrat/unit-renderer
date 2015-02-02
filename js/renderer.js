@@ -52,12 +52,13 @@ var cr = (function() {
     });
 
 
-  function init(div) {
+  function init(div, callback) {
     if (!div) {
       throw new Error("Column renderer requires a div")
     }
     
     cr.div = div;
+    cr.cb = callback;
 
     d3.select("#" + div).append("div").attr("id", "timescaleContainer");
     d3.select("#" + div).append("div").attr("id", "sectionContainer");
@@ -473,6 +474,7 @@ var cr = (function() {
       adjust.labels.units();
       adjust.units.zIndex();
 
+      cr.cb();
     });
     
   }

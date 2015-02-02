@@ -36,11 +36,26 @@
     margin-left: 5px;
   }
 
+  #info {
+    position: absolute;
+    left: 400px;
+    width: 300px;
+    top: 30px;
+  }
+
   #oddities {
     position: absolute;
     left: 700px;
-    top: 0;
+    top: 30px;
   }
+
+  input {
+    margin: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #aaa;
+  }
+  
   .unit_node {
     fill-opacity: 0.8;
   }
@@ -49,6 +64,9 @@
 </head>
 <body>
   <div id="columnContainer"></div>
+  <div id="info">
+
+  </div>
   <div id="oddities">
     <button>Swap Views</button>
     <form name="changeColumns" onSubmit="return handleColumnChange()">
@@ -70,15 +88,35 @@
 
     function handleColumnChange() {
       var col_id = document.getElementById("columnIdInput").value;
-      cr.goToColumn(col_id);
-      window.location.hash = "#/column=" + col_id; 
-      document.getElementById("columnIdInput").value = ""
+      if (col_id.length > 0) {
+        cr.goToColumn(col_id);
+        window.location.hash = "#/column=" + col_id; 
+        document.getElementById("columnIdInput").value = "";
+      }
       return false;
     }
 
     var chunk = window.location.hash.replace("#/", "");
 
-    cr.init("columnContainer");
+    cr.init("columnContainer", function() {
+
+      d3.selectAll(".unit_node").on("mouseover", function(d) {
+        d3.select(this).style("stroke-width", "0.04em");
+
+        d3.select("#info").html(
+          "<h3>" + d.strat_name + " (" + d.id + ")</h3><br>" + 
+          "Top age - " + d.t_age + "<br>" + 
+          "Bottom age - " + d.b_age + "<br>" +
+          "Units above - " + JSON.stringify(d.units_above) + "<br>" +
+          "Units below - " + JSON.stringify(d.units_below)
+        )
+      });
+
+      d3.selectAll(".unit_node").on("mouseout", function(d) {
+        d3.select(this).style("stroke-width", "0.01em");
+      });
+
+    });
 
     if (chunk.indexOf("section=") > -1) {
       // We have section
@@ -92,6 +130,8 @@
       // Punt
       cr.goToSection(4258);
     }
+
+      
 
   </script>
 </body>
