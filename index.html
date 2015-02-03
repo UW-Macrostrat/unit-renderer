@@ -96,7 +96,7 @@
       return false;
     }
 
-    var chunk = window.location.hash.replace("#/", "");
+    
 
     cr.init("columnContainer", function() {
 
@@ -120,19 +120,28 @@
 
     });
 
-    if (chunk.indexOf("section=") > -1) {
-      // We have section
-      var section = chunk.replace("section=", "");
-      cr.goToSection(section);
-    } else if (chunk.indexOf("column=") > -1) {
-      // We have a column
-      var column = chunk.replace("column=", "");
-      cr.goToColumn(column);
-    } else {
-      // Punt
-      cr.goToSection(4258);
+
+
+    function processWindowHash() {
+      var chunk = window.location.hash.replace("#/", "");
+
+      if (chunk.indexOf("section=") > -1) {
+        // We have section
+        var section = chunk.replace("section=", "");
+        cr.goToSection(section);
+      } else if (chunk.indexOf("column=") > -1) {
+        // We have a column
+        var column = chunk.replace("column=", "");
+        cr.goToColumn(column);
+      } else {
+        // Punt
+        cr.goToSection(4258);
+      }
     }
 
+    d3.select(window).on("hashchange", processWindowHash);
+
+    processWindowHash();
       
 
   </script>

@@ -19,13 +19,13 @@ function getDrawingColumns(units) {
 
   function addToColumn(column_index, unit_id) {
     checked.push(unit_id);
-    columns[column_index].units.push(unit_id);
+    columns[column_index].push(unit_id);
   }
 
 
   function addToColumnAbove(column_index, unit_id) {
     checked.push(unit_id);
-    columns[column_index].units.unshift(unit_id);
+    columns[column_index].unshift(unit_id);
   }
 
 
@@ -101,7 +101,7 @@ function getDrawingColumns(units) {
   }
 
   // This keeps track of our columns - start with too many and delete unused ones later
-  var columns = [{"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}, {"units": []}];
+  var columns = [[], [], [], [], [], [], [], []];
 
   // This makes looking up units by ID much easier - no need to loop through and find it
   var unitHash = _.indexBy(units, "id");
@@ -176,153 +176,67 @@ function getDrawingColumns(units) {
 
   // By here we'll have our matrix. Remove unused columns.
   columns = columns.filter(function(d) {
-    if (d.units.length > 0) {
+    if (d.length > 0) {
       return d;
     }
   });
 
   var checked = [],
       not_found = [];
-      
+
   // Make sure columns are properly sorted...
   units.forEach(function(d) {
 
     // 1. Find all columns that contain this unit + record them in an array
     var inColumns = findUnitInColumns(d.id, columns);
+
     // 2. If in more than one column, check if they are consecutive
     if (inColumns.length > 1) {
+
       // 2A. If they are not consecutive, we need to reorder them
       if (!areColumnsInOrder(inColumns)) {
-        console.log("Working on ", d.id)
-        /*
+
         // By here we know we need a fix
-        // i. get top and bottom contacts of this unit
-        var aboves = d.units_above,
-            bottoms = d.units_below;
+        console.log("Working on ", d.id);
+        
+        var found = false
 
-        // ii. See if at least one top and one bottom are in the target column
-
-        var targetIndex = -1,
-            // Array of indices of possible columns
-            possibleColumns = [],
-            possibleColumnsHash = {};
-
-        // Find all columns that have some combination of the tops and bottoms
-        columns.forEach(function(c, i) {
-          var topPresent = false,
-              topPresentIndex = -1,
-              bottomPresent = false,
-              bottomPresentIndex = -1;
-
-          aboves.forEach(function(x, k) {
-            if (c.units.indexOf(x) > -1) {
-              topPresent = true;
-              topPresentUnit = x;
-            }
-          });
-
-          bottoms.forEach(function(x, k) {
-            if (c.units.indexOf(x) > -1) {
-              bottomPresent = true;
-              bottomPresentUnit = x;
-            }
-          });
-
-          if (topPresent && bottomPresent) {
-            if ((c.units.indexOf(bottomPresentUnit) - c.units.indexOf(topPresentUnit)) === 2) {
-              possibleColumns.push(i);
-              possibleColumnsHash[i] = {
-                "above": topPresentUnit,
-                "below": bottomPresentUnit
-              }
-            }
-          }
-        });
-
-        possibleColumns = _.difference(possibleColumns, inColumns);
-*/
-      //  if (possibleColumns.length < 1) {
-
-          //console.log("Rearrange columns")
-          // Keep yo stack in check
-
-          // Keep sorting until they are in order
-         // while (!areColumnsInOrder(inColumns)) {
-           // console.log(inColumns)
-         // var indices = findGap(inColumns);
-
-         // console.log("moving", d.id)
-         /*console.log("from index - ", indices["fromIndex"], inColumns)
-          for (var i = 0; i < columns.length; i++) {
-            console.log(i)
-            newColumnOrder = _.moveShallow(columns, indices["fromIndex"], i);
+        // Brute force
+        for (var i = 0; i < columns.length; i++) {
+          var broken = false;
+          // Try a new ordering of the "columns", and then check to see if it is valid
+          for (var j = 0; j < columns.length; j++) {
+            newColumnOrder = _.moveShallow(columns, i, j);
             // Check if the sort was valid
             if (validSort(checked, newColumnOrder)) {
-              console.log("valid sort");
-              _.move(columns, indices["fromIndex"], i);
-              break;
-            } else {
-              console.log(checked, newColumnOrder);
-              console.log("Not a valid sort!");
-
-              // Try a different sort...
-            }
-          }*/
-
-          var found = false
-          for (var i = 0; i < columns.length; i++) {
-            var broken = false;
-            for (var j = 0; j < columns.length; j++) {
-              newColumnOrder = _.moveShallow(columns, i, j);
-              // Check if the sort was valid
-              if (validSort(checked, newColumnOrder)) {
-                console.log("valid sort");
-                _.move(columns, i, j);
-                broken = true;
-                found = true;
+              console.log("Found valid sort for ", d.id);
+              // If it's valid, move the "columns" around
+              _.move(columns, i, j);
+              broken = true;
+              found = true;
+              if (checked.indexOf(d.id) < 0) {
                 checked.push(d.id);
-                break;
               }
-            }
-
-        /* Things seems to work better if we don't bail early with the first valid sort. 
-           Last sort seems to work way better for some reason... */
-
-           // if (broken) {
-          //    break;
-          //  }
-          }
-
-          if (!found) {
-            console.log("Couldn't find a sort for ", d.id, checked);
-            not_found.push(d.id);
-          }
-          inColumns = findUnitInColumns(d.id, columns);
-         // }
-     /*   } else {
-          var target = possibleColumns[0];
-
-          var unitToMoveIndex = columns[target].units.indexOf(possibleColumnsHash[target].above) + 1,
-              unitToMove = columns[target].units[unitToMoveIndex];
               
-          // get the val
-          console.log(possibleColumns)
-          console.log("Swap units in columns", unitToMoveIndex, unitToMove)
-        }*/
-
-        // If a top and bottom are both in the target column, see what's between them
-        /*if (topPresent && bottomPresent) {
-          // If there is only one unit between them...
-          if ((colums[targetIndex].indexOf(bottomPresentIndex) - columns[targetIndex].indexOf(topPresentIndex)) === 2) {
-            // ...get that unit
-            var unitToSwapIndex = colums[targetIndex].indexOf(bottomPresentIndex) - 1,
-                unitToSwap = columns[targetIndex][unitToSwapIndex];
-            
-            // ... And then do the swap
+              break;
+            }
           }
-        }*/
+
+      /* Things seems to work better if we don't bail early with the first valid sort. 
+         Last sort seems to work way better for some reason... */
+
+         // if (broken) {
+        //    break;
+        //  }
+        }
+
+        if (!found) {
+          console.log("Couldn't find a sort for ", d.id, checked);
+          not_found.push(d.id);
+        }
+        inColumns = findUnitInColumns(d.id, columns);
           
-      }
+      } 
     } 
     
   });
@@ -356,7 +270,7 @@ function getDrawingColumns(units) {
   function findUnitInColumns(unit_id, cs) {
     var inColumns = [];
     cs.forEach(function(j, i) {
-      if (_.contains(j.units, unit_id)) {
+      if (_.contains(j, unit_id)) {
         inColumns.push(i);
       } 
     });
@@ -373,18 +287,6 @@ function getDrawingColumns(units) {
       return true;
     } else {
       return false;
-    }
-  }
-
-
-  function findGap(a) {
-    for (var i = 0; i < a.length; i++) {
-      if ((a[i + 1] - a[i]) > 1) {
-        // {fromIndex: toIndex}
-        return { "fromIndex" : a[i + 1],
-                 "toIndex"   : a[i] + 1 
-               }
-      }
     }
   }
 

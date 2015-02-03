@@ -3,14 +3,14 @@
 */
 var cr = (function() {
 
+  // Moves one SVG visually on top of another
   d3.selection.prototype.moveToFront = function() {
     return this.each(function(){
       this.parentNode.appendChild(this);
     });
   };
 
-
-  var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : "http://dev.macrostrat.org",
+  var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : ("http://" + window.location.hostname),
     units = {
       width: 200,
       height: 600
@@ -79,7 +79,6 @@ var cr = (function() {
 
 
   function getStrats(col_id) {
-    //column = {};
     getColumnUnits(col_id);
     getColumnSections(col_id);
   }
@@ -125,9 +124,7 @@ var cr = (function() {
           }
         });
       });
-
     // !!!!!!!!!!!!!
-
 
       getTimescaleData();
 
@@ -220,7 +217,7 @@ var cr = (function() {
       "age": 3
     }
 
-    // This tells us which time interval to zoom to when a section is clickec
+    // This tells us which time interval to zoom to when a section is clicked
     column.sections.forEach(function(d) {
       var containingIntervals = [];
       // Find all the ones that fit
@@ -364,7 +361,7 @@ var cr = (function() {
       /* Get drawing columns (function imported from getDrawingColumns.js)
           returns {"columns": columns, "units": units}
       */
-      //console.log(section);
+
       var parsed = getDrawingColumns(section.units);
 
 
@@ -384,7 +381,7 @@ var cr = (function() {
         unit.firstCol = -1,
         unit.cols = 0;
         parsed.columns.forEach(function(column, columnIndex) {
-          if (column.units.indexOf(unit.id) > -1) {
+          if (column.indexOf(unit.id) > -1) {
             unit.cols++;
             if (unit.firstCol < 0) {
               unit.firstCol = columnIndex;
@@ -393,7 +390,6 @@ var cr = (function() {
         });
       });
 
-      
 
       // Ignore the bad ones
       var data = section.units.filter(function(d) {
@@ -742,24 +738,7 @@ var cr = (function() {
       
       position: function() {
         this.showUnits();
-     /*   var chunk = window.location.hash.replace("#/", "");
-
-        if (chunk.indexOf("section=") > -1) {
-          // We have section
-          this.showUnits();
-          var section = chunk.replace("section=", "");
-          column.sections.forEach(function(d) {
-            if (d.id == section) {
-              zoom.go(d.interval);
-            }
-          });
-        } else if (chunk.indexOf("column=") > -1) {
-          // We have a column
-          this.showSections();
-        } else {
-          // Punt
-          this.showUnits();
-        }*/
+        /* Some logic to figure out if we should show units or sections */
       },
 
       swapViews: function() {
@@ -888,5 +867,3 @@ var cr = (function() {
   }
 
 })();
-
-
