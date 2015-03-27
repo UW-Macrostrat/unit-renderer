@@ -68,7 +68,7 @@ var cr = (function() {
 
   function findSectionColumn(section_id) {
     column = {};
-    d3.json(baseURL + "/api/units?section_id=" + section_id, function(error, data) {
+    d3.json(baseURL + "/api/units?debug=true&section_id=" + section_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find section " + section_id + " while retrieving units");
       }
@@ -85,7 +85,7 @@ var cr = (function() {
 
 
   function getColumnUnits(col_id) {
-    d3.json(baseURL + "/api/units?response=long&col_id=" + col_id, function(error, data) {
+    d3.json(baseURL + "/api/units?debug=true&response=long&col_id=" + col_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find column " + col_id + " while retrieving units");
       }
@@ -344,9 +344,9 @@ var cr = (function() {
       // Find the bad ones
       section.units.forEach(function(d) {
         if (d.t_age > d.b_age) {
-          d3.select("#oddities").append("p").html("Backwards - <a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Backwards - <a href='http://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         } else if (d.t_age === d.b_age) {
-          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='http://dev.macrostrat.org/api/units?response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='http://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         }
 
       });
