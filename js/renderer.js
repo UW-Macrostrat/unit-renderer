@@ -10,7 +10,7 @@ var cr = (function() {
     });
   };
 
-  var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : ("http://" + window.location.hostname),
+  var baseURL = (window.location.hostname === "localhost") ? "http://localhost:5000" : ("https://" + window.location.hostname),
     units = {
       width: 200,
       height: 600
@@ -344,9 +344,9 @@ var cr = (function() {
       // Find the bad ones
       section.units.forEach(function(d) {
         if (d.t_age > d.b_age) {
-          d3.select("#oddities").append("p").html("Backwards - <a href='http://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Backwards - <a href='https://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         } else if (d.t_age === d.b_age) {
-          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='http://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='https://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         }
 
       });
