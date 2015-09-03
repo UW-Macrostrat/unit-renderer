@@ -25,7 +25,7 @@ var cr = (function() {
       newY = 0.01;
 
   var drag = d3.behavior.drag()
-    .origin(function() { 
+    .origin(function() {
       var t = d3.select("#timescaleContainer g");
       return {x: 0, y: -newY};
     })
@@ -56,7 +56,7 @@ var cr = (function() {
     if (!div) {
       throw new Error("Column renderer requires a div")
     }
-    
+
     cr.div = div;
     cr.cb = callback;
 
@@ -68,7 +68,7 @@ var cr = (function() {
 
   function findSectionColumn(section_id) {
     column = {};
-    d3.json(baseURL + "/api/units?debug=true&section_id=" + section_id, function(error, data) {
+    d3.json(baseURL + "/api/v1/units?debug=true&section_id=" + section_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find section " + section_id + " while retrieving units");
       }
@@ -85,7 +85,7 @@ var cr = (function() {
 
 
   function getColumnUnits(col_id) {
-    d3.json(baseURL + "/api/units?debug=true&response=long&col_id=" + col_id, function(error, data) {
+    d3.json(baseURL + "/api/v1/units?debug=true&response=long&col_id=" + col_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find column " + col_id + " while retrieving units");
       }
@@ -97,11 +97,11 @@ var cr = (function() {
 
 
   function getColumnSections(col_id) {
-    d3.json(baseURL + "/api/sections?col_id=" + col_id, function(error, data) {
+    d3.json(baseURL + "/api/v1/sections?col_id=" + col_id, function(error, data) {
       if (error || data.success.data.length < 1) {
         return alert("Couldn't find column " + col_id + " while retrieving sections");
       }
-      // Reformat the data to make drawing code more generic 
+      // Reformat the data to make drawing code more generic
       column.sections = data.success.data.map(function(d) {
         return {
           "id": d.id,
@@ -140,7 +140,7 @@ var cr = (function() {
       .domain([late_age, early_age])
       .range([0, units.height]);
 
-    d3.json(baseURL + "/api/defs/intervals?timescale=international&rule=loose&early_age=" + early_age + "&late_age=" + late_age, function(error, data) {
+    d3.json(baseURL + "/api/v1/defs/intervals?timescale=international&rule=loose&early_age=" + early_age + "&late_age=" + late_age, function(error, data) {
       column.intervals = data.success.data;
       drawTimescale(data.success.data);
       setupUnits();
@@ -153,7 +153,7 @@ var cr = (function() {
 
     var min = d3.min(data, function(d) { return d.late_age }),
         max = d3.max(data, function(d) { return d.early_age});
-    
+
     var interval_lookup = {
         "era": 0,
         "period": intervals.width * 0.25,
@@ -173,7 +173,7 @@ var cr = (function() {
         .append("g")
           .attr("id", "timescale")
           .attr("data-zoomed", "false");
-      
+
     svg.selectAll(".node")
       .data(data)
     .enter().append("rect")
@@ -294,7 +294,7 @@ var cr = (function() {
       .style("fill", function(d) { return d.text_color })
       .text(function(d) { return d.strat_name; })
       .call(drag);
-    
+
     adjust.graphic.position();
     adjust.labels.sections();
   }
@@ -344,9 +344,9 @@ var cr = (function() {
       // Find the bad ones
       section.units.forEach(function(d) {
         if (d.t_age > d.b_age) {
-          d3.select("#oddities").append("p").html("Backwards - <a href='https://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Backwards - <a href='https://dev.macrostrat.org/api/v1/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         } else if (d.t_age === d.b_age) {
-          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='https://dev.macrostrat.org/api/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
+          d3.select("#oddities").append("p").html("Equal top and bottom - <a href='https://dev.macrostrat.org/api/v1/units?debug=true&response=long&id=" + d.id + "'>" + d.strat_name + " <i>(" + d.id + ")</i></a>");
         }
 
       });
@@ -357,7 +357,7 @@ var cr = (function() {
         return;
       }
   // !!!!!!!
-      
+
       /* Get drawing columns (function imported from getDrawingColumns.js)
           returns {"columns": columns, "units": units}
       */
@@ -452,7 +452,7 @@ var cr = (function() {
         .attr("id", function(d) { return "ul" + d.id })
         .attr("dy", ".35em")
         .style("fill", function(d) { return d.text_color })
-        .attr("transform", function(d) { 
+        .attr("transform", function(d) {
           var x = parseFloat(d3.select("#u" + d.id).attr("x")),
               width = parseFloat(d3.select("#u" + d.id).attr("width")),
               y = parseFloat(d3.select("#u" + d.id).attr("y")),
@@ -461,24 +461,24 @@ var cr = (function() {
           x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
           y = y + (height/2);
 
-          return "translate(" + x  + "," + y + ")" 
+          return "translate(" + x  + "," + y + ")"
         })
-        
+
         .text(function(d) { return d.strat_name; })
         .call(drag);
-      
+
       adjust.labels.units();
       adjust.units.zIndex();
 
       cr.cb();
     });
-    
+
   }
 
 
   var zoom = {
     go: function(id) {
-        
+
       if (d3.select("#n" + id).attr("data-zoomed") === "true") {
         d3.selectAll(".interval_node").filter(function() {
           if (d3.select(this).attr("data-zoomed") === "true") {
@@ -503,7 +503,7 @@ var cr = (function() {
       d3.selectAll(".crContainer").attr("transform", "translate(0,0)");
 
     },
-    
+
     inn: {
       go: function(scaleF, translate) {
         // Indicate that we are zoomed in
@@ -545,10 +545,10 @@ var cr = (function() {
         d3.selectAll(".section_node")
           .transition()
           .duration(1000)
-          .attr("height", function(d) { 
+          .attr("height", function(d) {
             return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
           })
-          .attr("y", function(d) { 
+          .attr("y", function(d) {
             return (units.scale(d.t_age) * scaleF) - translate;
           });
 
@@ -558,9 +558,9 @@ var cr = (function() {
           .transition()
           .duration(1000)
           .each(function(){ ++n; })
-          .attr("transform", function(d) { 
+          .attr("transform", function(d) {
             var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2);
-            return "translate(" +  (units.width/2)  + "," + ((origY * scaleF) - translate)  + ")" 
+            return "translate(" +  (units.width/2)  + "," + ((origY * scaleF) - translate)  + ")"
           })
           .each("end", function() { if (!--n) { adjust.labels.sections() }});
       },
@@ -569,10 +569,10 @@ var cr = (function() {
         d3.selectAll(".unit_node")
           .transition()
           .duration(1000)
-          .attr("height", function(d) { 
+          .attr("height", function(d) {
             return (units.scale(d.b_age) - units.scale(d.t_age)) * scaleF
           })
-          .attr("y", function(d) { 
+          .attr("y", function(d) {
             return (units.scale(d.t_age)  * scaleF) - translate;
           });
 
@@ -582,14 +582,14 @@ var cr = (function() {
           .transition()
           .duration(1000)
           .each(function() { ++n; })
-          .attr("transform", function(d) { 
+          .attr("transform", function(d) {
             var origY = (units.scale(d.t_age) + (units.scale(d.b_age) - units.scale(d.t_age))/2),
                 x = parseFloat(d3.select("#u" + d.id).attr("x")),
                 width = parseFloat(d3.select("#u" + d.id).attr("width"));
 
             x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2);
 
-            return "translate(" + x + "," + ((origY * scaleF) - translate) + ")" 
+            return "translate(" + x + "," + ((origY * scaleF) - translate) + ")"
           })
           .each("end", function() { if (!--n) { adjust.labels.units() }});
       }
@@ -600,7 +600,7 @@ var cr = (function() {
         // Indicate that we are zoomed out
         d3.select("#timescale")
           .attr("data-zoomed", "false");
-        
+
         this.timescale();
         this.sections();
         this.units();
@@ -623,8 +623,8 @@ var cr = (function() {
           .transition()
           .duration(1000)
           .each(function(){ ++n; })
-          .attr("transform", function(d) { 
-            return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)"; 
+          .attr("transform", function(d) {
+            return "translate(" + (intervals.interval_lookup[d.type] + ((intervals.width * 0.3)/2)) + "," + ((units.scale(d.late_age) + units.scale(d.early_age))/2) + ")rotate(-90)";
           })
           .each("end", function() { if (!--n) { adjust.labels.timescale() }});
       },
@@ -638,7 +638,7 @@ var cr = (function() {
           .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
 
         var n = 0;
-        // Reset the unit labels 
+        // Reset the unit labels
         d3.selectAll(".unit_label_section")
           .transition()
           .duration(1000)
@@ -655,7 +655,7 @@ var cr = (function() {
           .attr("height", function(d) { return units.scale(d.b_age) - units.scale(d.t_age)});
 
         var n = 0;
-        // Reset the unit labels 
+        // Reset the unit labels
         d3.selectAll(".unit_label")
           .transition()
           .duration(1000)
@@ -669,7 +669,7 @@ var cr = (function() {
              var x = (d.containsUnit) ? (units.width/2) + ((width/2)/2) : x + (width/2),
                  y = y + (height/2)
 
-              return "translate(" + x  + "," + y + ")" 
+              return "translate(" + x  + "," + y + ")"
           })
           .each("end", function() { if (!--n) { adjust.labels.units() }});
 
@@ -735,7 +735,7 @@ var cr = (function() {
     },
 
     graphic: {
-      
+
       position: function() {
         this.showUnits();
         /* Some logic to figure out if we should show units or sections */
@@ -775,14 +775,14 @@ var cr = (function() {
         d3.select("#sectionContainer").select("svg").selectAll("g").transition()
           .duration(700)
           .attr("transform", "translate(-1000,0)");
-        
+
         d3.select("#sectionContainer")
           .style("z-index", 0);
 
         d3.select("#stratContainer").select("svg").selectAll("g").transition()
           .duration(700)
           .attr("transform", "translate(0,0)");
-         
+
         d3.select("#stratContainer")
           .style("z-index", 1);
 
@@ -805,7 +805,7 @@ var cr = (function() {
           });
 
           if (sameY[0].length > 1) {
-            
+
             // Do they have the same height?
             var heights = []
             sameY[0].forEach(function(j) {
@@ -823,7 +823,7 @@ var cr = (function() {
               });
 
               var nextX = d3.select(first[0]).attr("width");
-              
+
               var rest = sameY[0].filter(function(x) {
                 if (d3.select(x).attr("x") != 0) {
                   return x;
